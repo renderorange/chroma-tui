@@ -3,6 +3,7 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/renderorange/chroma/chroma-tui/osc"
+	"math"
 )
 
 type StateMsg osc.State
@@ -124,11 +125,11 @@ func (m *Model) adjustFocused(delta float32) {
 		m.markPendingChange(m.focused)
 		m.client.SetBitcrushMix(m.BitcrushMix)
 	case ctrlGranularDensity:
-		m.GranularDensity = clamp(m.GranularDensity+delta*49, 1, 50)
+		m.GranularDensity = adjustLogarithmic(m.GranularDensity, delta*0.8, 1, 50)
 		m.markPendingChange(m.focused)
 		m.client.SetGranularDensity(m.GranularDensity)
 	case ctrlGranularSize:
-		m.GranularSize = clamp(m.GranularSize+delta*0.49, 0.01, 0.5)
+		m.GranularSize = adjustLogarithmic(m.GranularSize, delta*0.5, 0.01, 0.5)
 		m.markPendingChange(m.focused)
 		m.client.SetGranularSize(m.GranularSize)
 	case ctrlGranularPitchScatter:
@@ -160,11 +161,11 @@ func (m *Model) adjustFocused(delta float32) {
 		m.markPendingChange(m.focused)
 		m.client.SetDelayDecayTime(m.DelayDecayTime)
 	case ctrlModRate:
-		m.ModRate = clamp(m.ModRate+delta*9.9, 0.1, 10)
+		m.ModRate = adjustLogarithmic(m.ModRate, delta*0.5, 0.1, 5)
 		m.markPendingChange(m.focused)
 		m.client.SetModRate(m.ModRate)
 	case ctrlModDepth:
-		m.ModDepth = clamp(m.ModDepth+delta, 0, 1)
+		m.ModDepth = adjustLogarithmic(m.ModDepth, delta*0.5, 0, 1)
 		m.markPendingChange(m.focused)
 		m.client.SetModDepth(m.ModDepth)
 	case ctrlDelayMix:
@@ -282,6 +283,21 @@ func (m Model) handleEffectsOrderKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+func adjustLogarithmic(current, delta, min, max float32) float32 {
+	if current <= 0 || min <= 0 {
+		return clamp(current+delta, min, max) // Fallback for edge cases
+	}
+
+	logCurrent := math.Log10(float64(current))
+	logMin := math.Log10(float64(min))
+	logMax := math.Log10(float64(max))
+
+	newLog := logCurrent + float64(delta)*0.1*(logMax-logMin)
+	newLog = math.Max(logMin, math.Min(logMax, newLog))
+
+	return float32(math.Pow(10, newLog))
 }
 
 func clamp(v, min, max float32) float32 {

@@ -172,33 +172,13 @@ func (s *Server) StateChan() <-chan State {
 func toFloat32(v interface{}) float32 {
 	switch val := v.(type) {
 	case float32:
-		if val < -1000.0 || val > 1000.0 {
-			// Log validation error but return safe default for compatibility
-			fmt.Printf("WARNING: toFloat32 value %f out of range [-1000.0, 1000.0], using 0.0\n", val)
-			return 0.0
-		}
-		return val
+		return val // Remove validation - trust SuperCollider
 	case float64:
-		f32 := float32(val)
-		if f32 < -1000.0 || f32 > 1000.0 {
-			fmt.Printf("WARNING: toFloat32 converted value %f out of range [-1000.0, 1000.0], using 0.0\n", f32)
-			return 0.0
-		}
-		return f32
+		return float32(val) // Remove validation
 	case int32:
-		f32 := float32(val)
-		if f32 < -1000.0 || f32 > 1000.0 {
-			fmt.Printf("WARNING: toFloat32 converted value %d out of range [-1000.0, 1000.0], using 0.0\n", val)
-			return 0.0
-		}
-		return f32
+		return float32(val) // Remove validation
 	case int:
-		f32 := float32(val)
-		if f32 < -1000.0 || f32 > 1000.0 {
-			fmt.Printf("WARNING: toFloat32 converted value %d out of range [-1000.0, 1000.0], using 0.0\n", val)
-			return 0.0
-		}
-		return f32
+		return float32(val) // Remove validation
 	default:
 		fmt.Printf("WARNING: toFloat32 invalid type %T, expected float32/float64/int32/int, using 0.0\n", v)
 		return 0.0
@@ -208,28 +188,13 @@ func toFloat32(v interface{}) float32 {
 func toInt(v interface{}) int {
 	switch val := v.(type) {
 	case int32:
-		ival := int(val)
-		if ival < -2147483648 || ival > 2147483647 {
-			fmt.Printf("WARNING: toInt converted value %d out of int32 range, using 0\n", ival)
-			return 0
-		}
-		return ival
+		return int(val) // Remove validation
 	case int:
-		return val
+		return val // Remove validation
 	case float32:
-		ival := int(val)
-		if ival < -2147483648 || ival > 2147483647 {
-			fmt.Printf("WARNING: toInt converted value %f out of int32 range, using 0\n", val)
-			return 0
-		}
-		return ival
+		return int(val) // Remove validation
 	case float64:
-		ival := int(val)
-		if ival < -2147483648 || ival > 2147483647 {
-			fmt.Printf("WARNING: toInt converted value %f out of int32 range, using 0\n", val)
-			return 0
-		}
-		return ival
+		return int(val) // Remove validation
 	default:
 		fmt.Printf("WARNING: toInt invalid type %T, expected int/int32/float32/float64, using 0\n", v)
 		return 0
