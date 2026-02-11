@@ -52,16 +52,8 @@ func (m Model) View() string {
 	middleWidth := (width - columnGap*2) / 3
 	rightWidth := width - leftWidth - middleWidth - columnGap*2
 
-	// Left column: Visualizer, Input, Effects Order, Global
+	// Left column: Input, Effects Order, Global
 	var leftSections []string
-
-	// Visualizer at top (if connected)
-	if m.connected {
-		vis := m.renderVisualizer(leftWidth)
-		if vis != "" {
-			leftSections = append(leftSections, vis)
-		}
-	}
 
 	leftSections = append(leftSections, m.renderSection("INPUT", leftWidth, m.renderInputControls))
 	leftSections = append(leftSections, m.renderSection("EFFECTS ORDER", leftWidth, m.renderEffectsOrderControls))

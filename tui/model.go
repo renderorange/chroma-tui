@@ -97,10 +97,6 @@ type Model struct {
 	width               int
 	height              int
 
-	// Visualizer state
-	Spectrum [8]float32
-	Waveform [64]float32 // Add 64-point waveform buffer
-
 	// Pending changes tracking
 	pendingChanges map[control]time.Time
 
@@ -271,9 +267,7 @@ func (m *Model) ApplyState(s osc.State) {
 		m.SetEffectsOrder(s.EffectsOrder)
 	}
 
-	// Spectrum, waveform, and connection status are always updated
-	m.Spectrum = s.Spectrum
-	m.Waveform = s.Waveform
+	// Connection status is always updated
 	m.connected = true
 }
 

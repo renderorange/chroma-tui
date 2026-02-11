@@ -63,11 +63,6 @@ type State struct {
 	DelayMix             float32
 	BlendMode            int
 	DryWet               float32
-
-	// Spectrum data (8 bands)
-	Spectrum [8]float32
-	// Waveform data (64 points)
-	Waveform [64]float32
 	// Effects order
 	EffectsOrder []string
 }
@@ -126,62 +121,12 @@ func NewServer(port int) *Server {
 				DryWet:               toFloat32(msg.Arguments[34]),
 			}
 			s.stateMu.Lock()
-			existingSpectrum := s.currentState.Spectrum
 			s.currentState = state
-			s.currentState.Spectrum = existingSpectrum
 			s.stateMu.Unlock()
 			// Non-blocking send
 			select {
 			case s.stateChan <- state:
 			default:
-			}
-		}
-	})
-
-	// Spectrum data message handler
-	d.AddMsgHandler("/chroma/spectrum", func(msg *osc.Message) {
-		if len(msg.Arguments) >= 8 {
-			var spectrum [8]float32
-			for i := 0; i < 8 && i < len(msg.Arguments); i++ {
-				if f, ok := msg.Arguments[i].(float32); ok {
-					spectrum[i] = f
-				} else if f64, ok := msg.Arguments[i].(float64); ok {
-					spectrum[i] = float32(f64)
-				}
-			}
-			s.stateMu.Lock()
-			s.currentState.Spectrum = spectrum
-			state := s.currentState
-			s.stateMu.Unlock()
-			// Send to channel for real-time updates
-			select {
-			case s.stateChan <- state:
-			default:
-				// Channel full, skip update
-			}
-		}
-	})
-
-	// Waveform data message handler
-	d.AddMsgHandler("/chroma/waveform", func(msg *osc.Message) {
-		if len(msg.Arguments) >= 64 {
-			var waveform [64]float32
-			for i := 0; i < 64 && i < len(msg.Arguments); i++ {
-				if f, ok := msg.Arguments[i].(float32); ok {
-					waveform[i] = f
-				} else if f64, ok := msg.Arguments[i].(float64); ok {
-					waveform[i] = float32(f64)
-				}
-			}
-			s.stateMu.Lock()
-			s.currentState.Waveform = waveform
-			state := s.currentState
-			s.stateMu.Unlock()
-			// Send to channel for real-time updates
-			select {
-			case s.stateChan <- state:
-			default:
-				// Channel full, skip update
 			}
 		}
 	})

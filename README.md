@@ -93,7 +93,7 @@ This repository contains only the TUI component:
 │               │                  │                  │
 │ • Interface    │                  │ • Audio Engine   │
 │ • Controls    │                  │ • Effects        │
-│ • Visualizer  │                  │ • Spectrum       │
+│ • Parameters  │                  │ • Spectrum       │
 └─────────────────┘                  └────────────────────┘
 ```
 

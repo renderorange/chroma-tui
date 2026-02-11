@@ -99,20 +99,6 @@ func TestView_RenderingWithDifferentWidths(t *testing.T) {
 	}
 }
 
-func TestView_RenderingWithSpectrumData(t *testing.T) {
-	client := osc.NewClient("127.0.0.1", 57120)
-	model := NewModel(client)
-
-	// Add spectrum data
-	model.Spectrum = [8]float32{0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8}
-	view := model.View()
-
-	// View should be non-empty with spectrum data
-	if len(view) == 0 {
-		t.Error("expected non-empty view with spectrum data")
-	}
-}
-
 func TestView_RenderingWithMIDIPort(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
