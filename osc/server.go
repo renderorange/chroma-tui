@@ -7,6 +7,26 @@ import (
 	"github.com/hypebeast/go-osc/osc"
 )
 
+// ValidationError represents a validation error with context
+type ValidationError struct {
+	Field   string
+	Value   interface{}
+	Message string
+	Code    int
+}
+
+func (e *ValidationError) Error() string {
+	return fmt.Sprintf("validation error in %s: %s", e.Field, e.Message)
+}
+
+// Error codes
+const (
+	ErrCodeInvalidType   = 1001
+	ErrCodeOutOfRange    = 1002
+	ErrCodeMissingField  = 1003
+	ErrCodeProtocolError = 1004
+)
+
 type State struct {
 	Gain                 float32
 	InputFrozen          bool
@@ -207,29 +227,66 @@ func (s *Server) StateChan() <-chan State {
 func toFloat32(v interface{}) float32 {
 	switch val := v.(type) {
 	case float32:
+		if val < -1000.0 || val > 1000.0 {
+			// Log validation error but return safe default for compatibility
+			fmt.Printf("WARNING: toFloat32 value %f out of range [-1000.0, 1000.0], using 0.0\n", val)
+			return 0.0
+		}
 		return val
 	case float64:
-		return float32(val)
+		f32 := float32(val)
+		if f32 < -1000.0 || f32 > 1000.0 {
+			fmt.Printf("WARNING: toFloat32 converted value %f out of range [-1000.0, 1000.0], using 0.0\n", f32)
+			return 0.0
+		}
+		return f32
 	case int32:
-		return float32(val)
+		f32 := float32(val)
+		if f32 < -1000.0 || f32 > 1000.0 {
+			fmt.Printf("WARNING: toFloat32 converted value %d out of range [-1000.0, 1000.0], using 0.0\n", val)
+			return 0.0
+		}
+		return f32
 	case int:
-		return float32(val)
+		f32 := float32(val)
+		if f32 < -1000.0 || f32 > 1000.0 {
+			fmt.Printf("WARNING: toFloat32 converted value %d out of range [-1000.0, 1000.0], using 0.0\n", val)
+			return 0.0
+		}
+		return f32
 	default:
-		return 0
+		fmt.Printf("WARNING: toFloat32 invalid type %T, expected float32/float64/int32/int, using 0.0\n", v)
+		return 0.0
 	}
 }
 
 func toInt(v interface{}) int {
 	switch val := v.(type) {
 	case int32:
-		return int(val)
+		ival := int(val)
+		if ival < -2147483648 || ival > 2147483647 {
+			fmt.Printf("WARNING: toInt converted value %d out of int32 range, using 0\n", ival)
+			return 0
+		}
+		return ival
 	case int:
 		return val
 	case float32:
-		return int(val)
+		ival := int(val)
+		if ival < -2147483648 || ival > 2147483647 {
+			fmt.Printf("WARNING: toInt converted value %f out of int32 range, using 0\n", val)
+			return 0
+		}
+		return ival
 	case float64:
-		return int(val)
+		ival := int(val)
+		if ival < -2147483648 || ival > 2147483647 {
+			fmt.Printf("WARNING: toInt converted value %f out of int32 range, using 0\n", val)
+			return 0
+		}
+		return ival
 	default:
+		fmt.Printf("WARNING: toInt invalid type %T, expected int/int32/float32/float64, using 0\n", v)
 		return 0
 	}
 }
@@ -237,8 +294,13 @@ func toInt(v interface{}) int {
 func toString(v interface{}) string {
 	switch val := v.(type) {
 	case string:
+		if len(val) > 255 {
+			fmt.Printf("WARNING: toString string length %d exceeds maximum 255, truncating\n", len(val))
+			return val[:255]
+		}
 		return val
 	default:
+		fmt.Printf("WARNING: toString invalid type %T, expected string, using 'subtle'\n", v)
 		return "subtle"
 	}
 }
