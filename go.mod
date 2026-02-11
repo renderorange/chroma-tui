@@ -1,4 +1,4 @@
-module github.com/renderorange/chroma/chroma-tui
+module github.com/renderorange/chroma-tui
 
 go 1.24.2
 
