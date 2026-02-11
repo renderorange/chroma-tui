@@ -46,27 +46,44 @@ func (m Model) View() string {
 		width = 80
 	}
 
-	var sections []string
+	// Calculate column widths (split with small gaps)
+	columnGap := 2
+	leftWidth := (width - columnGap*2) / 3
+	middleWidth := (width - columnGap*2) / 3
+	rightWidth := width - leftWidth - middleWidth - columnGap*2
+
+	// Left column: Visualizer, Input, Effects Order, Global
+	var leftSections []string
 
 	// Visualizer at top (if connected)
 	if m.connected {
-		vis := m.renderVisualizer(width)
+		vis := m.renderVisualizer(leftWidth)
 		if vis != "" {
-			sections = append(sections, vis)
+			leftSections = append(leftSections, vis)
 		}
 	}
 
-	sections = append(sections, m.renderSection("INPUT", width, m.renderInputControls))
-	sections = append(sections, m.renderSection("FILTER", width, m.renderFilterControls))
-	sections = append(sections, m.renderSection("OVERDRIVE", width, m.renderOverdriveControls))
-	sections = append(sections, m.renderSection("BITCRUSH", width, m.renderBitcrushControls))
-	sections = append(sections, m.renderSection("GRANULAR", width, m.renderGranularControls))
-	sections = append(sections, m.renderSection("REVERB", width, m.renderReverbControls))
-	sections = append(sections, m.renderSection("DELAY", width, m.renderDelayControls))
-	sections = append(sections, m.renderSection("EFFECTS ORDER", width, m.renderEffectsOrderControls))
-	sections = append(sections, m.renderSection("GLOBAL", width, m.renderGlobalControls))
+	leftSections = append(leftSections, m.renderSection("INPUT", leftWidth, m.renderInputControls))
+	leftSections = append(leftSections, m.renderSection("EFFECTS ORDER", leftWidth, m.renderEffectsOrderControls))
+	leftSections = append(leftSections, m.renderSection("GLOBAL", leftWidth, m.renderGlobalControls))
+	leftColumn := lipgloss.JoinVertical(lipgloss.Left, leftSections...)
 
-	content := lipgloss.JoinVertical(lipgloss.Left, sections...)
+	// Middle column: FILTER, OVERDRIVE, BITCRUSH
+	var middleSections []string
+	middleSections = append(middleSections, m.renderSection("FILTER", middleWidth, m.renderFilterControls))
+	middleSections = append(middleSections, m.renderSection("OVERDRIVE", middleWidth, m.renderOverdriveControls))
+	middleSections = append(middleSections, m.renderSection("BITCRUSH", middleWidth, m.renderBitcrushControls))
+	middleColumn := lipgloss.JoinVertical(lipgloss.Left, middleSections...)
+
+	// Right column: GRANULAR, REVERB, DELAY
+	var rightSections []string
+	rightSections = append(rightSections, m.renderSection("GRANULAR", rightWidth, m.renderGranularControls))
+	rightSections = append(rightSections, m.renderSection("REVERB", rightWidth, m.renderReverbControls))
+	rightSections = append(rightSections, m.renderSection("DELAY", rightWidth, m.renderDelayControls))
+	rightColumn := lipgloss.JoinVertical(lipgloss.Left, rightSections...)
+
+	// Join columns horizontally
+	content := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, strings.Repeat(" ", columnGap), middleColumn, strings.Repeat(" ", columnGap), rightColumn)
 
 	// Status bar (with left margin to align with box content)
 	margin := "  "
