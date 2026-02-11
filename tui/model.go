@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"time"
-
 	"github.com/renderorange/chroma/chroma-tui/osc"
 )
 
@@ -12,20 +10,12 @@ const (
 	ctrlGain control = iota
 	ctrlInputFreezeLen
 	ctrlInputFreeze
-	ctrlFilterEnabled
 	ctrlFilterAmount
 	ctrlFilterCutoff
 	ctrlFilterResonance
-	ctrlOverdriveEnabled
 	ctrlOverdriveDrive
 	ctrlOverdriveTone
 	ctrlOverdriveMix
-	ctrlBitcrushEnabled
-	ctrlBitDepth
-	ctrlBitcrushSampleRate
-	ctrlBitcrushDrive
-	ctrlBitcrushMix
-	ctrlGranularEnabled
 	ctrlGranularDensity
 	ctrlGranularSize
 	ctrlGranularPitchScatter
@@ -33,15 +23,13 @@ const (
 	ctrlGranularMix
 	ctrlGranularFreeze
 	ctrlGrainIntensity
-	ctrlReverbEnabled
-	ctrlReverbDecayTime
-	ctrlReverbMix
-	ctrlDelayEnabled
+	ctrlReverbDelayBlend
+	ctrlDecayTime
+	ctrlShimmerPitch
 	ctrlDelayTime
-	ctrlDelayDecayTime
 	ctrlModRate
 	ctrlModDepth
-	ctrlDelayMix
+	ctrlReverbDelayMix
 	ctrlBlendMode
 	ctrlDryWet
 	ctrlCount
@@ -52,36 +40,26 @@ type Model struct {
 	Gain                 float32
 	InputFrozen          bool
 	InputFreezeLength    float32
-	FilterEnabled        bool
 	FilterAmount         float32
 	FilterCutoff         float32
 	FilterResonance      float32
-	OverdriveEnabled     bool
 	OverdriveDrive       float32
 	OverdriveTone        float32
 	OverdriveMix         float32
-	BitcrushEnabled      bool
-	BitDepth             float32
-	BitcrushSampleRate   float32
-	BitcrushDrive        float32
-	BitcrushMix          float32
-	GranularEnabled      bool
 	GranularDensity      float32
 	GranularSize         float32
 	GranularPitchScatter float32
 	GranularPosScatter   float32
 	GranularMix          float32
 	GranularFrozen       bool
-	GrainIntensity       string // "subtle", "pronounced", or "extreme"
-	ReverbEnabled        bool
-	ReverbDecayTime      float32
-	ReverbMix            float32
-	DelayEnabled         bool
+	GrainIntensity       string // "subtle" or "pronounced"
+	ReverbDelayBlend     float32
+	DecayTime            float32
+	ShimmerPitch         float32
 	DelayTime            float32
-	DelayDecayTime       float32
 	ModRate              float32
 	ModDepth             float32
-	DelayMix             float32
+	ReverbDelayMix       float32
 	BlendMode            int
 	DryWet               float32
 
@@ -94,10 +72,6 @@ type Model struct {
 
 	// Visualizer state
 	Spectrum [8]float32
-	Waveform [64]float32 // Add 64-point waveform buffer
-
-	// Pending changes tracking
-	pendingChanges map[control]time.Time
 
 	// OSC
 	client *osc.Client
@@ -108,157 +82,60 @@ func NewModel(client *osc.Client) Model {
 		// Defaults matching Chroma.sc
 		Gain:                 1.0,
 		InputFreezeLength:    0.1,
-		FilterEnabled:        true,
 		FilterAmount:         0.5,
 		FilterCutoff:         2000,
 		FilterResonance:      0.3,
-		OverdriveEnabled:     false,
 		OverdriveDrive:       0.5,
 		OverdriveTone:        0.7,
 		OverdriveMix:         0.0,
-		BitcrushEnabled:      false,
-		BitDepth:             8,
-		BitcrushSampleRate:   11025,
-		BitcrushDrive:        0.5,
-		BitcrushMix:          0.3,
-		GranularEnabled:      true,
 		GranularDensity:      20,
 		GranularSize:         0.15,
 		GranularPitchScatter: 0.2,
 		GranularPosScatter:   0.3,
 		GranularMix:          0.5,
 		GrainIntensity:       "subtle",
-		ReverbEnabled:        false,
-		ReverbDecayTime:      3,
-		ReverbMix:            0.3,
-		DelayEnabled:         false,
+		ReverbDelayBlend:     0.5,
+		DecayTime:            3,
+		ShimmerPitch:         12,
 		DelayTime:            0.3,
-		DelayDecayTime:       3,
 		ModRate:              0.5,
 		ModDepth:             0.3,
-		DelayMix:             0.3,
+		ReverbDelayMix:       0.3,
 		DryWet:               0.5,
 
-		focused:        ctrlGain,
-		connected:      false,
-		client:         client,
-		pendingChanges: make(map[control]time.Time),
+		focused:   ctrlGain,
+		connected: false,
+		client:    client,
 	}
 }
 
 func (m *Model) ApplyState(s osc.State) {
-	// Clean up stale pending changes
-	m.cleanupStalePendingChanges()
-
-	// Only update values that don't have pending user changes
-	if !m.hasPendingChange(ctrlGain) {
-		m.Gain = s.Gain
-	}
-	if !m.hasPendingChange(ctrlInputFreeze) {
-		m.InputFrozen = s.InputFrozen
-	}
-	if !m.hasPendingChange(ctrlInputFreezeLen) {
-		m.InputFreezeLength = s.InputFreezeLength
-	}
-	if !m.hasPendingChange(ctrlFilterEnabled) {
-		m.FilterEnabled = s.FilterEnabled
-	}
-	if !m.hasPendingChange(ctrlFilterAmount) {
-		m.FilterAmount = s.FilterAmount
-	}
-	if !m.hasPendingChange(ctrlFilterCutoff) {
-		m.FilterCutoff = s.FilterCutoff
-	}
-	if !m.hasPendingChange(ctrlFilterResonance) {
-		m.FilterResonance = s.FilterResonance
-	}
-	if !m.hasPendingChange(ctrlOverdriveEnabled) {
-		m.OverdriveEnabled = s.OverdriveEnabled
-	}
-	if !m.hasPendingChange(ctrlOverdriveDrive) {
-		m.OverdriveDrive = s.OverdriveDrive
-	}
-	if !m.hasPendingChange(ctrlOverdriveTone) {
-		m.OverdriveTone = s.OverdriveTone
-	}
-	if !m.hasPendingChange(ctrlOverdriveMix) {
-		m.OverdriveMix = s.OverdriveMix
-	}
-	if !m.hasPendingChange(ctrlGranularEnabled) {
-		m.GranularEnabled = s.GranularEnabled
-	}
-	if !m.hasPendingChange(ctrlGranularDensity) {
-		m.GranularDensity = s.GranularDensity
-	}
-	if !m.hasPendingChange(ctrlGranularSize) {
-		m.GranularSize = s.GranularSize
-	}
-	if !m.hasPendingChange(ctrlGranularPitchScatter) {
-		m.GranularPitchScatter = s.GranularPitchScatter
-	}
-	if !m.hasPendingChange(ctrlGranularPosScatter) {
-		m.GranularPosScatter = s.GranularPosScatter
-	}
-	if !m.hasPendingChange(ctrlGranularMix) {
-		m.GranularMix = s.GranularMix
-	}
-	if !m.hasPendingChange(ctrlGranularFreeze) {
-		m.GranularFrozen = s.GranularFrozen
-	}
-	// Note: GrainIntensity doesn't have a direct control mapping, so always update
+	m.Gain = s.Gain
+	m.InputFrozen = s.InputFrozen
+	m.InputFreezeLength = s.InputFreezeLength
+	m.FilterAmount = s.FilterAmount
+	m.FilterCutoff = s.FilterCutoff
+	m.FilterResonance = s.FilterResonance
+	m.OverdriveDrive = s.OverdriveDrive
+	m.OverdriveTone = s.OverdriveTone
+	m.OverdriveMix = s.OverdriveMix
+	m.GranularDensity = s.GranularDensity
+	m.GranularSize = s.GranularSize
+	m.GranularPitchScatter = s.GranularPitchScatter
+	m.GranularPosScatter = s.GranularPosScatter
+	m.GranularMix = s.GranularMix
+	m.GranularFrozen = s.GranularFrozen
 	m.GrainIntensity = s.GrainIntensity
-	if !m.hasPendingChange(ctrlBitcrushEnabled) {
-		m.BitcrushEnabled = s.BitcrushEnabled
-	}
-	if !m.hasPendingChange(ctrlBitDepth) {
-		m.BitDepth = s.BitDepth
-	}
-	if !m.hasPendingChange(ctrlBitcrushSampleRate) {
-		m.BitcrushSampleRate = s.BitcrushSampleRate
-	}
-	if !m.hasPendingChange(ctrlBitcrushDrive) {
-		m.BitcrushDrive = s.BitcrushDrive
-	}
-	if !m.hasPendingChange(ctrlBitcrushMix) {
-		m.BitcrushMix = s.BitcrushMix
-	}
-	if !m.hasPendingChange(ctrlReverbEnabled) {
-		m.ReverbEnabled = s.ReverbEnabled
-	}
-	if !m.hasPendingChange(ctrlReverbDecayTime) {
-		m.ReverbDecayTime = s.ReverbDecayTime
-	}
-	if !m.hasPendingChange(ctrlReverbMix) {
-		m.ReverbMix = s.ReverbMix
-	}
-	if !m.hasPendingChange(ctrlDelayEnabled) {
-		m.DelayEnabled = s.DelayEnabled
-	}
-	if !m.hasPendingChange(ctrlDelayTime) {
-		m.DelayTime = s.DelayTime
-	}
-	if !m.hasPendingChange(ctrlDelayDecayTime) {
-		m.DelayDecayTime = s.DelayDecayTime
-	}
-	if !m.hasPendingChange(ctrlModRate) {
-		m.ModRate = s.ModRate
-	}
-	if !m.hasPendingChange(ctrlModDepth) {
-		m.ModDepth = s.ModDepth
-	}
-	if !m.hasPendingChange(ctrlDelayMix) {
-		m.DelayMix = s.DelayMix
-	}
-	if !m.hasPendingChange(ctrlBlendMode) {
-		m.BlendMode = s.BlendMode
-	}
-	if !m.hasPendingChange(ctrlDryWet) {
-		m.DryWet = s.DryWet
-	}
-
-	// Spectrum, waveform, and connection status are always updated
+	m.ReverbDelayBlend = s.ReverbDelayBlend
+	m.DecayTime = s.DecayTime
+	m.ShimmerPitch = s.ShimmerPitch
+	m.DelayTime = s.DelayTime
+	m.ModRate = s.ModRate
+	m.ModDepth = s.ModDepth
+	m.ReverbDelayMix = s.ReverbDelayMix
+	m.BlendMode = s.BlendMode
+	m.DryWet = s.DryWet
 	m.Spectrum = s.Spectrum
-	m.Waveform = s.Waveform
 	m.connected = true
 }
 
@@ -280,27 +157,4 @@ func (m *Model) IsConnected() bool {
 
 func (m *Model) SetMidiPort(name string) {
 	m.midiPort = name
-}
-
-func (m *Model) markPendingChange(ctrl control) {
-	m.pendingChanges[ctrl] = time.Now()
-}
-
-func (m *Model) hasPendingChange(ctrl control) bool {
-	_, exists := m.pendingChanges[ctrl]
-	return exists
-}
-
-func (m *Model) clearPendingChange(ctrl control) {
-	delete(m.pendingChanges, ctrl)
-}
-
-func (m *Model) cleanupStalePendingChanges() {
-	// Remove pending changes older than 500ms
-	cutoff := time.Now().Add(-500 * time.Millisecond)
-	for ctrl, timestamp := range m.pendingChanges {
-		if timestamp.Before(cutoff) {
-			delete(m.pendingChanges, ctrl)
-		}
-	}
 }
