@@ -4,6 +4,8 @@ import (
 	"math"
 	"strings"
 	"testing"
+
+	"github.com/renderorange/chroma/chroma-tui/osc"
 )
 
 func TestRenderMultiLineSpectrum(t *testing.T) {
@@ -338,5 +340,26 @@ func TestRenderVisualizerCombination(t *testing.T) {
 	}
 	if !strings.Contains(result, "30Hz") {
 		t.Error("Result should contain frequency labels")
+	}
+}
+
+func TestEffectsOrderRendering(t *testing.T) {
+	client := osc.NewClient("127.0.0.1", 57120)
+	model := NewModel(client)
+	model.EffectsOrder = []string{"filter", "granular", "delay"}
+	model.focused = ctrlEffectsOrder
+
+	view := model.View()
+	if !strings.Contains(view, "EFFECTS ORDER") {
+		t.Error("View should contain EFFECTS ORDER section")
+	}
+	if !strings.Contains(view, "filter") {
+		t.Error("View should contain filter effect")
+	}
+	if !strings.Contains(view, "granular") {
+		t.Error("View should contain granular effect")
+	}
+	if !strings.Contains(view, "delay") {
+		t.Error("View should contain delay effect")
 	}
 }

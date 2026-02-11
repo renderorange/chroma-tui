@@ -33,9 +33,17 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "tab", "down", "j":
 		m.NextControl()
+		// Reset selection when entering effects order
+		if m.focused == ctrlEffectsOrder {
+			m.selectedEffectIndex = 0
+		}
 
 	case "shift+tab", "up", "k":
 		m.PrevControl()
+		// Reset selection when entering effects order
+		if m.focused == ctrlEffectsOrder {
+			m.selectedEffectIndex = 0
+		}
 
 	case "left", "h":
 		m.adjustFocused(-0.05)
@@ -55,6 +63,11 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.setBlendMode(1)
 	case "3":
 		m.setBlendMode(2)
+	}
+
+	// Handle effects order keyboard controls
+	if m.focused == ctrlEffectsOrder {
+		return m.handleEffectsOrderKeys(msg)
 	}
 
 	return m, nil
@@ -221,6 +234,54 @@ func (m *Model) toggleGrainIntensity() {
 	}
 	// Note: GrainIntensity doesn't have a control mapping, so no markPendingChange
 	m.client.SetGrainIntensity(m.GrainIntensity)
+}
+
+func (m Model) handleEffectsOrderKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.Type {
+	case tea.KeyUp, tea.KeyShiftTab:
+		if m.selectedEffectIndex > 0 {
+			m.selectedEffectIndex--
+		}
+	case tea.KeyDown, tea.KeyTab:
+		if m.selectedEffectIndex < len(m.EffectsOrder)-1 {
+			m.selectedEffectIndex++
+		}
+	case tea.KeyPgUp:
+		// Move selected effect up in order
+		if m.selectedEffectIndex > 0 {
+			order := m.GetEffectsOrder()
+			// Swap with previous
+			order[m.selectedEffectIndex], order[m.selectedEffectIndex-1] =
+				order[m.selectedEffectIndex-1], order[m.selectedEffectIndex]
+			m.SetEffectsOrder(order)
+			m.selectedEffectIndex-- // Keep selection on moved effect
+			// Trigger OSC update
+			m.client.SetEffectsOrder(order)
+		}
+	case tea.KeyPgDown:
+		// Move selected effect down in order
+		if m.selectedEffectIndex < len(m.EffectsOrder)-1 {
+			order := m.GetEffectsOrder()
+			// Swap with next
+			order[m.selectedEffectIndex], order[m.selectedEffectIndex+1] =
+				order[m.selectedEffectIndex+1], order[m.selectedEffectIndex]
+			m.SetEffectsOrder(order)
+			m.selectedEffectIndex++ // Keep selection on moved effect
+			// Trigger OSC update
+			m.client.SetEffectsOrder(order)
+		}
+	case tea.KeyRunes:
+		switch msg.Runes[0] {
+		case 'r':
+			// Reset to default order
+			defaultOrder := []string{"filter", "overdrive", "bitcrush", "granular", "reverb", "delay"}
+			m.SetEffectsOrder(defaultOrder)
+			m.selectedEffectIndex = 0
+			// Trigger OSC update
+			m.client.SetEffectsOrder(defaultOrder)
+		}
+	}
+	return m, nil
 }
 
 func clamp(v, min, max float32) float32 {

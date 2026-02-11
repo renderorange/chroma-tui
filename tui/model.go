@@ -44,6 +44,9 @@ const (
 	ctrlDelayMix
 	ctrlBlendMode
 	ctrlDryWet
+	ctrlEffectsOrder
+	ctrlEffectsMoveUp
+	ctrlEffectsMoveDown
 	ctrlCount
 )
 
@@ -84,16 +87,19 @@ type Model struct {
 	DelayMix             float32
 	BlendMode            int
 	DryWet               float32
+	EffectsOrder         []string // Current effects processing order
 
 	// UI state
-	focused   control
-	connected bool
-	midiPort  string
-	width     int
-	height    int
+	focused             control
+	selectedEffectIndex int // Index of currently selected effect for reordering
+	connected           bool
+	midiPort            string
+	width               int
+	height              int
 
 	// Visualizer state
 	Spectrum [8]float32
+	Waveform [64]float32 // Add 64-point waveform buffer
 
 	// Pending changes tracking
 	pendingChanges map[control]time.Time
@@ -137,11 +143,16 @@ func NewModel(client *osc.Client) Model {
 		ModDepth:             0.3,
 		DelayMix:             0.3,
 		DryWet:               0.5,
+		EffectsOrder: []string{
+			"filter", "overdrive", "bitcrush",
+			"granular", "reverb", "delay",
+		},
 
-		focused:        ctrlGain,
-		connected:      false,
-		client:         client,
-		pendingChanges: make(map[control]time.Time),
+		focused:             ctrlGain,
+		selectedEffectIndex: 0,
+		connected:           false,
+		client:              client,
+		pendingChanges:      make(map[control]time.Time),
 	}
 }
 
@@ -255,8 +266,14 @@ func (m *Model) ApplyState(s osc.State) {
 		m.DryWet = s.DryWet
 	}
 
-	// Spectrum and connection status are always updated
+	// Always update effects order
+	if len(s.EffectsOrder) > 0 {
+		m.SetEffectsOrder(s.EffectsOrder)
+	}
+
+	// Spectrum, waveform, and connection status are always updated
 	m.Spectrum = s.Spectrum
+	m.Waveform = s.Waveform
 	m.connected = true
 }
 
@@ -301,4 +318,21 @@ func (m *Model) cleanupStalePendingChanges() {
 			delete(m.pendingChanges, ctrl)
 		}
 	}
+}
+
+func (m *Model) SetEffectsOrder(order []string) {
+	m.EffectsOrder = order
+	// Trigger OSC update
+	// Will be connected to OSC client in next task
+}
+
+func (m *Model) GetEffectsOrder() []string {
+	if len(m.EffectsOrder) == 0 {
+		// Set default order
+		m.EffectsOrder = []string{
+			"filter", "overdrive", "bitcrush",
+			"granular", "reverb", "delay",
+		}
+	}
+	return m.EffectsOrder
 }

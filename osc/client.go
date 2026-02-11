@@ -1,6 +1,8 @@
 package osc
 
 import (
+	"fmt"
+
 	"github.com/hypebeast/go-osc/osc"
 )
 
@@ -88,7 +90,7 @@ func (c *Client) SetDelayTime(v float32) error      { return c.SendFloat("/chrom
 func (c *Client) SetDelayDecayTime(v float32) error { return c.SendFloat("/chroma/delayDecayTime", v) }
 func (c *Client) SetModRate(v float32) error        { return c.SendFloat("/chroma/modRate", v) }
 func (c *Client) SetModDepth(v float32) error       { return c.SendFloat("/chroma/modDepth", v) }
-func (c *Client) SetDelayMix(v float32) error { return c.SendFloat("/chroma/delayMix", v) }
+func (c *Client) SetDelayMix(v float32) error       { return c.SendFloat("/chroma/delayMix", v) }
 func (c *Client) SetOverdriveEnabled(v bool) error {
 	return c.SendInt("/chroma/overdriveEnabled", boolToInt(v))
 }
@@ -98,8 +100,8 @@ func (c *Client) SetOverdriveMix(v float32) error   { return c.SendFloat("/chrom
 func (c *Client) SetGranularEnabled(v bool) error {
 	return c.SendInt("/chroma/granularEnabled", boolToInt(v))
 }
-func (c *Client) SetBlendMode(v int) error          { return c.SendInt("/chroma/blendMode", int32(v)) }
-func (c *Client) SetDryWet(v float32) error         { return c.SendFloat("/chroma/dryWet", v) }
+func (c *Client) SetBlendMode(v int) error  { return c.SendInt("/chroma/blendMode", int32(v)) }
+func (c *Client) SetDryWet(v float32) error { return c.SendFloat("/chroma/dryWet", v) }
 
 func (c *Client) Send(path string, args ...interface{}) error {
 	msg := osc.NewMessage(path)
@@ -120,6 +122,27 @@ func (c *Client) Send(path string, args ...interface{}) error {
 
 func (c *Client) SetGrainIntensity(intensity string) error {
 	return c.Send("/chroma/grainIntensity", intensity)
+}
+
+func (c *Client) SetEffectsOrder(order []string) error {
+	args := make([]interface{}, len(order))
+	for i, effect := range order {
+		args[i] = effect
+	}
+	return c.Send("/chroma/effectsOrder", args...)
+}
+
+func (c *Client) GetEffectsOrder() ([]string, error) {
+	// Send the request - response will be handled by the server component
+	// that listens for /chroma/effectsOrder responses
+	err := c.Send("/chroma/getEffectsOrder")
+	if err != nil {
+		return nil, fmt.Errorf("failed to send getEffectsOrder request: %w", err)
+	}
+
+	// For now, return a placeholder. In a real implementation, this would
+	// wait for the response from the server component.
+	return []string{"filter", "overdrive", "bitcrush", "granular", "reverb", "delay"}, nil
 }
 
 func boolToInt(b bool) int32 {

@@ -8,8 +8,9 @@ import (
 )
 
 type Config struct {
-	CC    map[string]int `toml:"cc"`
-	Notes map[string]int `toml:"notes"`
+	CC           map[string]int `toml:"cc"`
+	Notes        map[string]int `toml:"notes"`
+	EffectsOrder []string       `toml:"effects_order,omitempty"`
 }
 
 func DefaultConfig() Config {
@@ -34,6 +35,7 @@ func DefaultConfig() Config {
 			"mode_complement": 65,
 			"mode_transform":  67,
 		},
+		EffectsOrder: []string{"filter", "overdrive", "bitcrush", "granular", "reverb", "delay"},
 	}
 }
 
@@ -55,4 +57,30 @@ func Load() Config {
 	}
 
 	return cfg
+}
+
+func LoadPath(path string) (Config, error) {
+	cfg := DefaultConfig()
+
+	if _, err := toml.DecodeFile(path, &cfg); err != nil {
+		return DefaultConfig(), err
+	}
+
+	return cfg, nil
+}
+
+func Save(cfg Config, path string) error {
+	// Ensure directory exists
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	file, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	return toml.NewEncoder(file).Encode(cfg)
 }

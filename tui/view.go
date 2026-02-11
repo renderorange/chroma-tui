@@ -63,6 +63,7 @@ func (m Model) View() string {
 	sections = append(sections, m.renderSection("GRANULAR", width, m.renderGranularControls))
 	sections = append(sections, m.renderSection("REVERB", width, m.renderReverbControls))
 	sections = append(sections, m.renderSection("DELAY", width, m.renderDelayControls))
+	sections = append(sections, m.renderSection("EFFECTS ORDER", width, m.renderEffectsOrderControls))
 	sections = append(sections, m.renderSection("GLOBAL", width, m.renderGlobalControls))
 
 	content := lipgloss.JoinVertical(lipgloss.Left, sections...)
@@ -79,7 +80,7 @@ func (m Model) View() string {
 		status += " │ MIDI: " + m.midiPort
 	}
 	status += "\n"
-	status += margin + "Tab/↑↓: Navigate │ ←→: Adjust │ Enter: Toggle │ i: Intensity │ 1-3: Mode │ q: Quit"
+	status += margin + "Tab/↑↓: Navigate │ ←→: Adjust │ Enter: Toggle │ i: Intensity │ 1-3: Mode │ PgUp/PgDn: Reorder │ r: Reset order │ q: Quit"
 
 	return content + status
 }
@@ -269,4 +270,35 @@ func (m Model) renderIntensitySelector(width int) string {
 		return focusedStyle.Render(line)
 	}
 	return normalStyle.Render(line)
+}
+
+func (m Model) renderEffectsOrderControls(width int) []string {
+	var lines []string
+
+	// Show current order with indices
+	for i, effect := range m.EffectsOrder {
+		var line string
+
+		if m.focused == ctrlEffectsOrder {
+			// Show which effect is selected for moving
+			line = focusedStyle.Render(fmt.Sprintf("  [%d] %s", i+1, effect))
+		} else {
+			line = normalStyle.Render(fmt.Sprintf("  [%d] %s", i+1, effect))
+		}
+
+		lines = append(lines, line)
+	}
+
+	// Instructions
+	lines = append(lines, "")
+	if m.focused == ctrlEffectsOrder {
+		lines = append(lines, focusedStyle.Render("  ↑/↓: Select effect"))
+		lines = append(lines, focusedStyle.Render("  PgUp/PgDn: Move up/down"))
+		lines = append(lines, focusedStyle.Render("  r: Reset to default"))
+	} else {
+		lines = append(lines, normalStyle.Render("  ↑/↓: Navigate controls"))
+		lines = append(lines, normalStyle.Render("  Tab: Move to effects order"))
+	}
+
+	return lines
 }

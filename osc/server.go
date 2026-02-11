@@ -46,6 +46,10 @@ type State struct {
 
 	// Spectrum data (8 bands)
 	Spectrum [8]float32
+	// Waveform data (64 points)
+	Waveform [64]float32
+	// Effects order
+	EffectsOrder []string
 }
 
 type Server struct {
@@ -127,6 +131,52 @@ func NewServer(port int) *Server {
 			}
 			s.stateMu.Lock()
 			s.currentState.Spectrum = spectrum
+			state := s.currentState
+			s.stateMu.Unlock()
+			// Send to channel for real-time updates
+			select {
+			case s.stateChan <- state:
+			default:
+				// Channel full, skip update
+			}
+		}
+	})
+
+	// Waveform data message handler
+	d.AddMsgHandler("/chroma/waveform", func(msg *osc.Message) {
+		if len(msg.Arguments) >= 64 {
+			var waveform [64]float32
+			for i := 0; i < 64 && i < len(msg.Arguments); i++ {
+				if f, ok := msg.Arguments[i].(float32); ok {
+					waveform[i] = f
+				} else if f64, ok := msg.Arguments[i].(float64); ok {
+					waveform[i] = float32(f64)
+				}
+			}
+			s.stateMu.Lock()
+			s.currentState.Waveform = waveform
+			state := s.currentState
+			s.stateMu.Unlock()
+			// Send to channel for real-time updates
+			select {
+			case s.stateChan <- state:
+			default:
+				// Channel full, skip update
+			}
+		}
+	})
+
+	// Effects order response handler
+	d.AddMsgHandler("/chroma/effectsOrder", func(msg *osc.Message) {
+		if len(msg.Arguments) > 0 {
+			order := make([]string, len(msg.Arguments))
+			for i, arg := range msg.Arguments {
+				if str, ok := arg.(string); ok {
+					order[i] = str
+				}
+			}
+			s.stateMu.Lock()
+			s.currentState.EffectsOrder = order
 			state := s.currentState
 			s.stateMu.Unlock()
 			// Send to channel for real-time updates
