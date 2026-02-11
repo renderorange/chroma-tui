@@ -37,6 +37,9 @@ func (c *Client) SetInputFreeze(v bool) error { return c.SendInt("/chroma/inputF
 func (c *Client) SetInputFreezeLength(v float32) error {
 	return c.SendFloat("/chroma/inputFreezeLength", v)
 }
+func (c *Client) SetFilterEnabled(v bool) error {
+	return c.SendInt("/chroma/filterEnabled", boolToInt(v))
+}
 func (c *Client) SetFilterAmount(v float32) error { return c.SendFloat("/chroma/filterAmount", v) }
 func (c *Client) SetFilterCutoff(v float32) error { return c.SendFloat("/chroma/filterCutoff", v) }
 func (c *Client) SetFilterResonance(v float32) error {
@@ -56,18 +59,45 @@ func (c *Client) SetGranularMix(v float32) error { return c.SendFloat("/chroma/g
 func (c *Client) SetGranularFreeze(v bool) error {
 	return c.SendInt("/chroma/granularFreeze", boolToInt(v))
 }
-func (c *Client) SetReverbDelayBlend(v float32) error {
-	return c.SendFloat("/chroma/reverbDelayBlend", v)
+
+// Bitcrushing controls
+func (c *Client) SetBitcrushEnabled(v bool) error {
+	return c.SendInt("/chroma/bitcrushEnabled", boolToInt(v))
 }
-func (c *Client) SetDecayTime(v float32) error      { return c.SendFloat("/chroma/decayTime", v) }
-func (c *Client) SetShimmerPitch(v float32) error   { return c.SendFloat("/chroma/shimmerPitch", v) }
+func (c *Client) SetBitDepth(v float32) error { return c.SendFloat("/chroma/bitDepth", v) }
+func (c *Client) SetBitcrushSampleRate(v float32) error {
+	return c.SendFloat("/chroma/bitcrushSampleRate", v)
+}
+func (c *Client) SetBitcrushDrive(v float32) error { return c.SendFloat("/chroma/bitcrushDrive", v) }
+func (c *Client) SetBitcrushMix(v float32) error   { return c.SendFloat("/chroma/bitcrushMix", v) }
+
+// Reverb controls
+func (c *Client) SetReverbEnabled(v bool) error {
+	return c.SendInt("/chroma/reverbEnabled", boolToInt(v))
+}
+func (c *Client) SetReverbDecayTime(v float32) error {
+	return c.SendFloat("/chroma/reverbDecayTime", v)
+}
+func (c *Client) SetReverbMix(v float32) error { return c.SendFloat("/chroma/reverbMix", v) }
+
+// Delay controls
+func (c *Client) SetDelayEnabled(v bool) error {
+	return c.SendInt("/chroma/delayEnabled", boolToInt(v))
+}
 func (c *Client) SetDelayTime(v float32) error      { return c.SendFloat("/chroma/delayTime", v) }
+func (c *Client) SetDelayDecayTime(v float32) error { return c.SendFloat("/chroma/delayDecayTime", v) }
 func (c *Client) SetModRate(v float32) error        { return c.SendFloat("/chroma/modRate", v) }
 func (c *Client) SetModDepth(v float32) error       { return c.SendFloat("/chroma/modDepth", v) }
-func (c *Client) SetReverbDelayMix(v float32) error { return c.SendFloat("/chroma/reverbDelayMix", v) }
+func (c *Client) SetDelayMix(v float32) error { return c.SendFloat("/chroma/delayMix", v) }
+func (c *Client) SetOverdriveEnabled(v bool) error {
+	return c.SendInt("/chroma/overdriveEnabled", boolToInt(v))
+}
 func (c *Client) SetOverdriveDrive(v float32) error { return c.SendFloat("/chroma/overdriveDrive", v) }
 func (c *Client) SetOverdriveTone(v float32) error  { return c.SendFloat("/chroma/overdriveTone", v) }
 func (c *Client) SetOverdriveMix(v float32) error   { return c.SendFloat("/chroma/overdriveMix", v) }
+func (c *Client) SetGranularEnabled(v bool) error {
+	return c.SendInt("/chroma/granularEnabled", boolToInt(v))
+}
 func (c *Client) SetBlendMode(v int) error          { return c.SendInt("/chroma/blendMode", int32(v)) }
 func (c *Client) SetDryWet(v float32) error         { return c.SendFloat("/chroma/dryWet", v) }
 
@@ -89,7 +119,7 @@ func (c *Client) Send(path string, args ...interface{}) error {
 }
 
 func (c *Client) SetGrainIntensity(intensity string) error {
-	return c.Send("/chroma", "grainIntensity", intensity)
+	return c.Send("/chroma/grainIntensity", intensity)
 }
 
 func boolToInt(b bool) int32 {
