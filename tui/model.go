@@ -19,6 +19,7 @@ const (
 	ctrlOverdriveEnabled
 	ctrlOverdriveDrive
 	ctrlOverdriveTone
+	ctrlOverdriveBias
 	ctrlOverdriveMix
 	ctrlBitcrushEnabled
 	ctrlBitDepth
@@ -62,6 +63,7 @@ type Model struct {
 	OverdriveEnabled     bool
 	OverdriveDrive       float32
 	OverdriveTone        float32
+	OverdriveBias        float32
 	OverdriveMix         float32
 	BitcrushEnabled      bool
 	BitDepth             float32
@@ -116,6 +118,7 @@ func NewModel(client *osc.Client) Model {
 		OverdriveEnabled:     false,
 		OverdriveDrive:       0.5,
 		OverdriveTone:        0.7,
+		OverdriveBias:        0.5,
 		OverdriveMix:         0.0,
 		BitcrushEnabled:      false,
 		BitDepth:             8,
@@ -186,6 +189,9 @@ func (m *Model) ApplyState(s osc.State) {
 	}
 	if !m.hasPendingChange(ctrlOverdriveTone) {
 		m.OverdriveTone = s.OverdriveTone
+	}
+	if !m.hasPendingChange(ctrlOverdriveBias) {
+		m.OverdriveBias = s.OverdriveBias
 	}
 	if !m.hasPendingChange(ctrlOverdriveMix) {
 		m.OverdriveMix = s.OverdriveMix

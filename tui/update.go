@@ -104,6 +104,10 @@ func (m *Model) adjustFocused(delta float32) {
 		m.OverdriveTone = clamp(m.OverdriveTone+delta, 0, 1)
 		m.markPendingChange(m.focused)
 		m.client.SetOverdriveTone(m.OverdriveTone)
+	case ctrlOverdriveBias:
+		m.OverdriveBias = clamp(m.OverdriveBias+delta, -1, 1)
+		m.markPendingChange(m.focused)
+		m.client.SetOverdriveBias(m.OverdriveBias)
 	case ctrlOverdriveMix:
 		m.OverdriveMix = clamp(m.OverdriveMix+delta, 0, 1)
 		m.markPendingChange(m.focused)

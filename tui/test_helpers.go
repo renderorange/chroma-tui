@@ -39,6 +39,7 @@ var (
 	TestCtrlOverdriveEnabled     = ctrlOverdriveEnabled
 	TestCtrlOverdriveDrive       = ctrlOverdriveDrive
 	TestCtrlOverdriveTone        = ctrlOverdriveTone
+	TestCtrlOverdriveBias        = ctrlOverdriveBias
 	TestCtrlOverdriveMix         = ctrlOverdriveMix
 	TestCtrlGranularEnabled      = ctrlGranularEnabled
 	TestCtrlGranularDensity      = ctrlGranularDensity

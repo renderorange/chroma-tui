@@ -139,6 +139,7 @@ func (m Model) renderOverdriveControls(width int) []string {
 		m.renderButton("OVERDRIVE", m.OverdriveEnabled, ctrlOverdriveEnabled),
 		m.renderSlider("Drive", m.OverdriveDrive, 0, 1, width, ctrlOverdriveDrive),
 		m.renderSlider("Tone", m.OverdriveTone, 0, 1, width, ctrlOverdriveTone),
+		m.renderSlider("Bias", m.OverdriveBias, -1, 1, width, ctrlOverdriveBias),
 		m.renderSlider("Mix", m.OverdriveMix, 0, 1, width, ctrlOverdriveMix),
 	}
 }

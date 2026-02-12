@@ -38,6 +38,7 @@ type State struct {
 	OverdriveEnabled     bool
 	OverdriveDrive       float32
 	OverdriveTone        float32
+	OverdriveBias        float32
 	OverdriveMix         float32
 	GranularEnabled      bool
 	GranularDensity      float32

@@ -96,6 +96,7 @@ func (c *Client) SetOverdriveEnabled(v bool) error {
 }
 func (c *Client) SetOverdriveDrive(v float32) error { return c.SendFloat("/chroma/overdriveDrive", v) }
 func (c *Client) SetOverdriveTone(v float32) error  { return c.SendFloat("/chroma/overdriveTone", v) }
+func (c *Client) SetOverdriveBias(v float32) error  { return c.SendFloat("/chroma/overdriveBias", v) }
 func (c *Client) SetOverdriveMix(v float32) error   { return c.SendFloat("/chroma/overdriveMix", v) }
 func (c *Client) SetGranularEnabled(v bool) error {
 	return c.SendInt("/chroma/granularEnabled", boolToInt(v))
