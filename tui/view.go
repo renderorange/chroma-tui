@@ -2,313 +2,75 @@ package tui
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/charmbracelet/lipgloss"
 )
 
-const (
-	labelWidth  = 12
-	minBarWidth = 20
-)
-
 var (
-	sectionTitleStyle = lipgloss.NewStyle().
-				Bold(true).
-				Foreground(lipgloss.Color("205"))
+	appStyle = lipgloss.NewStyle().Padding(1, 2)
 
-	focusedStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("205"))
+	titleStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#FFFDF5")).
+			Background(lipgloss.Color("#25A065")).
+			Padding(0, 1)
 
-	normalStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("249"))
+	statusMessageStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
+				Render
 
-	activeButtonStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("205")).
-				Foreground(lipgloss.Color("255"))
+	statusBarStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#888888")).
+			Padding(0, 1)
 
-	inactiveButtonStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("244")).
-				Foreground(lipgloss.Color("255"))
-
-	selectedModeStyle = lipgloss.NewStyle().
-				Background(lipgloss.Color("205")).
-				Foreground(lipgloss.Color("255"))
-
-	unselectedModeStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.Color("244"))
+	connectedStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#04B575"))
+	disconnectedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5555"))
 )
 
 func (m Model) View() string {
-	// Default width if not yet received
-	width := m.width
-	if width < 40 {
-		width = 80
+	if len(m.effectsList.Items()) == 0 && m.width > 0 {
+		return "Loading..."
 	}
 
-	// Calculate column widths (split with small gaps)
-	columnGap := 2
-	leftWidth := (width - columnGap*2) / 3
-	middleWidth := (width - columnGap*2) / 3
-	rightWidth := width - leftWidth - middleWidth - columnGap*2
+	var listView string
+	switch m.navigationMode {
+	case modeEffectsList:
+		listView = m.effectsList.View()
+	case modeParameterList:
+		listView = m.parameterList.View()
+	default:
+		listView = m.effectsList.View()
+	}
 
-	// Left column: Input, Effects Order, Global
-	var leftSections []string
+	if !m.showStatus {
+		return appStyle.Render(listView)
+	}
 
-	leftSections = append(leftSections, m.renderSection("INPUT", leftWidth, m.renderInputControls))
-	leftSections = append(leftSections, m.renderSection("EFFECTS ORDER", leftWidth, m.renderEffectsOrderControls))
-	leftSections = append(leftSections, m.renderSection("GLOBAL", leftWidth, m.renderGlobalControls))
-	leftColumn := lipgloss.JoinVertical(lipgloss.Left, leftSections...)
-
-	// Middle column: FILTER, OVERDRIVE, BITCRUSH
-	var middleSections []string
-	middleSections = append(middleSections, m.renderSection("FILTER", middleWidth, m.renderFilterControls))
-	middleSections = append(middleSections, m.renderSection("OVERDRIVE", middleWidth, m.renderOverdriveControls))
-	middleSections = append(middleSections, m.renderSection("BITCRUSH", middleWidth, m.renderBitcrushControls))
-	middleColumn := lipgloss.JoinVertical(lipgloss.Left, middleSections...)
-
-	// Right column: GRANULAR, REVERB, DELAY
-	var rightSections []string
-	rightSections = append(rightSections, m.renderSection("GRANULAR", rightWidth, m.renderGranularControls))
-	rightSections = append(rightSections, m.renderSection("REVERB", rightWidth, m.renderReverbControls))
-	rightSections = append(rightSections, m.renderSection("DELAY", rightWidth, m.renderDelayControls))
-	rightColumn := lipgloss.JoinVertical(lipgloss.Left, rightSections...)
-
-	// Join columns horizontally
-	content := lipgloss.JoinHorizontal(lipgloss.Top, leftColumn, strings.Repeat(" ", columnGap), middleColumn, strings.Repeat(" ", columnGap), rightColumn)
-
-	// Status bar (with left margin to align with box content)
-	margin := "  "
-	status := "\n" + margin + "Status: "
+	connectionStatus := disconnectedStyle.Render("Disconnected")
 	if m.connected {
-		status += "Connected"
-	} else {
-		status += "Disconnected"
-	}
-	if m.midiPort != "" {
-		status += " │ MIDI: " + m.midiPort
-	}
-	status += "\n"
-	status += margin + "Tab/↑↓: Navigate │ ←→: Adjust │ Enter: Toggle │ i: Intensity │ 1-3: Mode │ PgUp/PgDn: Reorder │ r: Reset order │ q: Quit"
-
-	return content + status
-}
-
-func (m Model) renderSection(title string, width int, renderControls func(int) []string) string {
-	innerWidth := width - 4 // Account for border padding
-
-	// Section title
-	titleLine := sectionTitleStyle.Render(fmt.Sprintf("─── %s ───", title))
-
-	// Get control lines
-	controls := renderControls(innerWidth)
-
-	// Build section content
-	lines := []string{titleLine}
-	lines = append(lines, controls...)
-	content := strings.Join(lines, "\n")
-
-	// Create box style with dynamic width
-	boxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		Padding(0, 1).
-		Width(width - 2)
-
-	return boxStyle.Render(content)
-}
-
-func (m Model) renderInputControls(width int) []string {
-	return []string{
-		m.renderSlider("Gain", m.Gain, 0, 2, width, ctrlGain),
-		m.renderSlider("Loop", m.InputFreezeLength, 0.05, 0.5, width, ctrlInputFreezeLen),
-		m.renderButton("INPUT FREEZE", m.InputFrozen, ctrlInputFreeze),
-	}
-}
-
-func (m Model) renderFilterControls(width int) []string {
-	return []string{
-		m.renderButton("FILTER", m.FilterEnabled, ctrlFilterEnabled),
-		m.renderSlider("Amount", m.FilterAmount, 0, 1, width, ctrlFilterAmount),
-		m.renderSlider("Cutoff", m.FilterCutoff, 200, 8000, width, ctrlFilterCutoff),
-		m.renderSlider("Resonance", m.FilterResonance, 0, 1, width, ctrlFilterResonance),
-	}
-}
-
-func (m Model) renderOverdriveControls(width int) []string {
-	return []string{
-		m.renderButton("OVERDRIVE", m.OverdriveEnabled, ctrlOverdriveEnabled),
-		m.renderSlider("Drive", m.OverdriveDrive, 0, 1, width, ctrlOverdriveDrive),
-		m.renderSlider("Tone", m.OverdriveTone, 0, 1, width, ctrlOverdriveTone),
-		m.renderSlider("Bias", m.OverdriveBias, -1, 1, width, ctrlOverdriveBias),
-		m.renderSlider("Mix", m.OverdriveMix, 0, 1, width, ctrlOverdriveMix),
-	}
-}
-
-func (m Model) renderBitcrushControls(width int) []string {
-	return []string{
-		m.renderButton("BITCRUSH", m.BitcrushEnabled, ctrlBitcrushEnabled),
-		m.renderSlider("BitDepth", m.BitDepth, 4, 16, width, ctrlBitDepth),
-		m.renderSlider("SampleRate", m.BitcrushSampleRate, 1000, 44100, width, ctrlBitcrushSampleRate),
-		m.renderSlider("Drive", m.BitcrushDrive, 0, 1, width, ctrlBitcrushDrive),
-		m.renderSlider("Mix", m.BitcrushMix, 0, 1, width, ctrlBitcrushMix),
-	}
-}
-
-func (m Model) renderGranularControls(width int) []string {
-	return []string{
-		m.renderButton("GRANULAR", m.GranularEnabled, ctrlGranularEnabled),
-		m.renderSlider("Density", m.GranularDensity, 1, 50, width, ctrlGranularDensity),
-		m.renderSlider("Size", m.GranularSize, 0.01, 0.5, width, ctrlGranularSize),
-		m.renderSlider("PitchScat", m.GranularPitchScatter, 0, 1, width, ctrlGranularPitchScatter),
-		m.renderSlider("PosScat", m.GranularPosScatter, 0, 1, width, ctrlGranularPosScatter),
-		m.renderSlider("Mix", m.GranularMix, 0, 1, width, ctrlGranularMix),
-		m.renderButton("GRAIN FREEZE", m.GranularFrozen, ctrlGranularFreeze),
-		m.renderIntensitySelector(width),
-	}
-}
-
-func (m Model) renderReverbControls(width int) []string {
-	return []string{
-		m.renderButton("REVERB", m.ReverbEnabled, ctrlReverbEnabled),
-		m.renderSlider("Decay", m.ReverbDecayTime, 0.5, 10, width, ctrlReverbDecayTime),
-		m.renderSlider("Mix", m.ReverbMix, 0, 1, width, ctrlReverbMix),
-	}
-}
-
-func (m Model) renderDelayControls(width int) []string {
-	return []string{
-		m.renderButton("DELAY", m.DelayEnabled, ctrlDelayEnabled),
-		m.renderSlider("Time", m.DelayTime, 0.1, 1, width, ctrlDelayTime),
-		m.renderSlider("Decay", m.DelayDecayTime, 0.5, 10, width, ctrlDelayDecayTime),
-		m.renderSlider("ModRate", m.ModRate, 0.1, 10, width, ctrlModRate),
-		m.renderSlider("ModDepth", m.ModDepth, 0, 1, width, ctrlModDepth),
-		m.renderSlider("Mix", m.DelayMix, 0, 1, width, ctrlDelayMix),
-	}
-}
-
-func (m Model) renderGlobalControls(width int) []string {
-	return []string{
-		m.renderModeSelector(width),
-		m.renderSlider("Dry/Wet", m.DryWet, 0, 1, width, ctrlDryWet),
-	}
-}
-
-func (m Model) renderSlider(label string, value, min, max float32, width int, ctrl control) string {
-	// Normalize value to 0-1
-	norm := (value - min) / (max - min)
-	if norm < 0 {
-		norm = 0
-	}
-	if norm > 1 {
-		norm = 1
+		connectionStatus = connectedStyle.Render("Connected")
 	}
 
-	// Calculate bar width (leave room for label and value)
-	valueStr := formatValue(value, min, max)
-	barWidth := width - labelWidth - len(valueStr) - 5 // 5 for " [" + "] "
-	if barWidth < minBarWidth {
-		barWidth = minBarWidth
+	midiStatus := m.midiPort
+	if midiStatus == "" {
+		midiStatus = "No MIDI"
 	}
 
-	// Build slider bar
-	filled := int(norm * float32(barWidth))
-	bar := strings.Repeat("█", filled) + strings.Repeat("─", barWidth-filled)
-
-	line := fmt.Sprintf("%-*s [%s] %s", labelWidth, label, bar, valueStr)
-	if m.focused == ctrl {
-		return focusedStyle.Render(line)
+	pendingCount := len(m.pendingChanges)
+	pendingStatus := ""
+	if pendingCount > 0 {
+		pendingStatus = fmt.Sprintf(" | %d pending", pendingCount)
 	}
-	return normalStyle.Render(line)
+
+	statusBar := statusBarStyle.Render(
+		fmt.Sprintf("%s | MIDI: %s%s", connectionStatus, midiStatus, pendingStatus),
+	)
+
+	return appStyle.Render(listView) + "\n" + statusBar
 }
 
 func formatValue(value, min, max float32) string {
-	// Show integers for large ranges, decimals for small ranges
 	if max-min >= 10 {
 		return fmt.Sprintf("%5.1f", value)
 	}
 	return fmt.Sprintf("%5.2f", value)
-}
-
-func (m Model) renderButton(label string, active bool, ctrl control) string {
-	style := inactiveButtonStyle
-	if active {
-		style = activeButtonStyle
-	}
-	btn := style.Render(fmt.Sprintf(" %s ", label))
-
-	// Add top margin (1 line) and left-align
-	margin := "\n"
-	if m.focused == ctrl {
-		return margin + focusedStyle.Render("▶ ") + btn
-	}
-	return margin + btn
-}
-
-func (m Model) renderModeSelector(width int) string {
-	modes := []string{"MIRROR", "COMPLEMENT", "TRANSFORM"}
-	var parts []string
-
-	for i, mode := range modes {
-		if i == m.BlendMode {
-			parts = append(parts, selectedModeStyle.Render(fmt.Sprintf(" %s ", mode)))
-		} else {
-			parts = append(parts, unselectedModeStyle.Render(fmt.Sprintf(" %s ", mode)))
-		}
-	}
-
-	line := fmt.Sprintf("%-*s %s", labelWidth, "Mode", strings.Join(parts, " "))
-	if m.focused == ctrlBlendMode {
-		return focusedStyle.Render(line)
-	}
-	return normalStyle.Render(line)
-}
-
-func (m Model) renderIntensitySelector(width int) string {
-	intensities := []string{"SUBTLE", "PRONOUNCED", "EXTREME"}
-	var parts []string
-
-	for _, intensity := range intensities {
-		if intensity == strings.ToUpper(m.GrainIntensity) {
-			parts = append(parts, selectedModeStyle.Render(fmt.Sprintf(" %s ", intensity)))
-		} else {
-			parts = append(parts, unselectedModeStyle.Render(fmt.Sprintf(" %s ", intensity)))
-		}
-	}
-
-	line := fmt.Sprintf("%-*s %s", labelWidth, "Intensity", strings.Join(parts, " "))
-	if m.focused == ctrlGrainIntensity {
-		return focusedStyle.Render(line)
-	}
-	return normalStyle.Render(line)
-}
-
-func (m Model) renderEffectsOrderControls(width int) []string {
-	var lines []string
-
-	// Show current order with indices
-	for i, effect := range m.EffectsOrder {
-		var line string
-
-		if m.focused == ctrlEffectsOrder {
-			// Show which effect is selected for moving
-			line = focusedStyle.Render(fmt.Sprintf("  [%d] %s", i+1, effect))
-		} else {
-			line = normalStyle.Render(fmt.Sprintf("  [%d] %s", i+1, effect))
-		}
-
-		lines = append(lines, line)
-	}
-
-	// Instructions
-	lines = append(lines, "")
-	if m.focused == ctrlEffectsOrder {
-		lines = append(lines, focusedStyle.Render("  ↑/↓: Select effect"))
-		lines = append(lines, focusedStyle.Render("  PgUp/PgDn: Move up/down"))
-		lines = append(lines, focusedStyle.Render("  r: Reset to default"))
-	} else {
-		lines = append(lines, normalStyle.Render("  ↑/↓: Navigate controls"))
-		lines = append(lines, normalStyle.Render("  Tab: Move to effects order"))
-	}
-
-	return lines
 }

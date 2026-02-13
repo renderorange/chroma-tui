@@ -131,7 +131,7 @@ func TestMain_TeaProgramCreation(t *testing.T) {
 	model := tui.NewModel(client)
 
 	// Create program with alt screen option
-	p := tea.NewProgram(model, tea.WithAltScreen())
+	p := tea.NewProgram(&model, tea.WithAltScreen())
 	if p == nil {
 		t.Fatal("expected non-nil tea program")
 	}
@@ -233,7 +233,7 @@ func TestMain_ProgramExitCodes(t *testing.T) {
 	// For now, verify that error path exists in main
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := tui.NewModel(client)
-	p := tea.NewProgram(model, tea.WithAltScreen())
+	p := tea.NewProgram(&model, tea.WithAltScreen())
 
 	// The program should be able to be created without error
 	if p == nil {

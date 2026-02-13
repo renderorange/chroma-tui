@@ -12,48 +12,86 @@ func (m Model) Init() tea.Cmd {
 	return nil
 }
 
-func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		// Initialize lists on first window size
+		if len(m.effectsList.Items()) == 0 {
+			m.InitLists(msg.Width, msg.Height)
+		}
+		m.effectsList.SetSize(msg.Width/2, msg.Height-4)
+		m.parameterList.SetSize(msg.Width/2, msg.Height-4)
 		return m, nil
+
 	case tea.KeyMsg:
 		return m.handleKey(msg)
+
 	case StateMsg:
 		m.ApplyState(osc.State(msg))
+		// Refresh lists with new state
+		m.effectsList.SetItems(m.buildEffectsList())
+		m.refreshParameterList()
 		return m, nil
 	}
+
+	// Delegate to list's Update when in list mode
+	if m.navigationMode == modeEffectsList {
+		var cmd tea.Cmd
+		m.effectsList, cmd = m.effectsList.Update(msg)
+		return m, cmd
+	} else if m.navigationMode == modeParameterList {
+		var cmd tea.Cmd
+		m.parameterList, cmd = m.parameterList.Update(msg)
+		return m, cmd
+	}
+
 	return m, nil
 }
 
-func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
 
-	case "tab", "down", "j":
-		m.NextControl()
-		// Reset selection when entering effects order
-		if m.focused == ctrlEffectsOrder {
-			m.selectedEffectIndex = 0
-		}
+	case "enter":
+		return m.handleEnterKey()
 
-	case "shift+tab", "up", "k":
-		m.PrevControl()
-		// Reset selection when entering effects order
-		if m.focused == ctrlEffectsOrder {
-			m.selectedEffectIndex = 0
-		}
+	case "esc":
+		return m.handleEscKey()
 
 	case "left", "h":
-		m.adjustFocused(-0.05)
+		if m.navigationMode == modeParameterList {
+			m.adjustSelectedParameter(-0.05)
+			m.refreshParameterList()
+		}
 
 	case "right", "l":
-		m.adjustFocused(0.05)
+		if m.navigationMode == modeParameterList {
+			m.adjustSelectedParameter(0.05)
+			m.refreshParameterList()
+		}
 
-	case "enter", " ":
-		m.toggleFocused()
+	case "H":
+		m.showHelp = !m.showHelp
+		m.effectsList.SetShowHelp(m.showHelp)
+		m.parameterList.SetShowHelp(m.showHelp)
+
+	case "S":
+		m.showStatus = !m.showStatus
+		m.effectsList.SetShowStatusBar(m.showStatus)
+		m.parameterList.SetShowStatusBar(m.showStatus)
+
+	case "P":
+		m.showPagination = !m.showPagination
+		m.effectsList.SetShowPagination(m.showPagination)
+		m.parameterList.SetShowPagination(m.showPagination)
+
+	case "T":
+		m.showTitle = !m.showTitle
+		m.effectsList.SetShowTitle(m.showTitle)
+		m.parameterList.SetShowTitle(m.showTitle)
 
 	case "i":
 		m.toggleGrainIntensity()
@@ -64,14 +102,84 @@ func (m Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.setBlendMode(1)
 	case "3":
 		m.setBlendMode(2)
-	}
 
-	// Handle effects order keyboard controls
-	if m.focused == ctrlEffectsOrder {
-		return m.handleEffectsOrderKeys(msg)
+	case "pgup":
+		if m.navigationMode == modeParameterList && m.currentSection == "global" {
+			m.handleEffectsOrderKeys(msg)
+		}
+	case "pgdown":
+		if m.navigationMode == modeParameterList && m.currentSection == "global" {
+			m.handleEffectsOrderKeys(msg)
+		}
+	case "r":
+		if m.navigationMode == modeParameterList && m.currentSection == "global" {
+			m.handleEffectsOrderKeys(msg)
+			m.refreshParameterList()
+		}
 	}
 
 	return m, nil
+}
+
+func (m *Model) handleEnterKey() (tea.Model, tea.Cmd) {
+	switch m.navigationMode {
+	case modeEffectsList:
+		// Drill into selected effect
+		idx := m.effectsList.Index()
+		items := m.effectsList.Items()
+		if idx >= 0 && idx < len(items) {
+			item := items[idx]
+			if eff, ok := item.(effectItem); ok {
+				m.currentSection = eff.id
+				m.navigationMode = modeParameterList
+				m.refreshParameterList()
+			}
+		}
+
+	case modeParameterList:
+		// Toggle or select parameter
+		idx := m.parameterList.Index()
+		items := m.parameterList.Items()
+		if idx >= 0 && idx < len(items) {
+			item := items[idx]
+			if param, ok := item.(parameterItem); ok {
+				if param.isToggle {
+					// Toggle the parameter
+					m.toggleByControl(param.ctrl)
+				}
+				m.refreshParameterList()
+			}
+		}
+	}
+	return m, nil
+}
+
+func (m *Model) handleEscKey() (tea.Model, tea.Cmd) {
+	switch m.navigationMode {
+	case modeParameterList:
+		// Go back to effects list
+		m.navigationMode = modeEffectsList
+		m.currentSection = "input"
+		m.effectsList.SetItems(m.buildEffectsList())
+	}
+	return m, nil
+}
+
+func (m *Model) adjustSelectedParameter(delta float32) {
+	idx := m.parameterList.Index()
+	items := m.parameterList.Items()
+	if idx >= 0 && idx < len(items) {
+		item := items[idx]
+		if param, ok := item.(parameterItem); ok {
+			m.focused = param.ctrl
+			m.adjustFocused(delta)
+		}
+	}
+}
+
+func (m *Model) toggleByControl(ctrl control) {
+	m.focused = ctrl
+	m.toggleFocused()
 }
 
 func (m *Model) adjustFocused(delta float32) {
@@ -241,7 +349,7 @@ func (m *Model) toggleGrainIntensity() {
 	m.client.SetGrainIntensity(m.GrainIntensity)
 }
 
-func (m Model) handleEffectsOrderKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+func (m *Model) handleEffectsOrderKeys(msg tea.KeyMsg) {
 	switch msg.Type {
 	case tea.KeyUp, tea.KeyShiftTab:
 		if m.selectedEffectIndex > 0 {
@@ -286,7 +394,6 @@ func (m Model) handleEffectsOrderKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.client.SetEffectsOrder(defaultOrder)
 		}
 	}
-	return m, nil
 }
 
 func adjustLogarithmic(current, delta, min, max float32) float32 {

@@ -47,7 +47,7 @@ func main() {
 	}
 
 	// Create program
-	p := tea.NewProgram(model, tea.WithAltScreen())
+	p := tea.NewProgram(&model, tea.WithAltScreen())
 
 	// Forward state updates to TUI
 	go func() {

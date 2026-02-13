@@ -3,10 +3,18 @@ package tui
 import (
 	"time"
 
+	"github.com/charmbracelet/bubbles/list"
 	"github.com/renderorange/chroma/chroma-tui/osc"
 )
 
 type control int
+
+type navigationMode int
+
+const (
+	modeEffectsList navigationMode = iota
+	modeParameterList
+)
 
 const (
 	ctrlGain control = iota
@@ -99,6 +107,16 @@ type Model struct {
 	width               int
 	height              int
 
+	// Navigation state for list-based UI
+	navigationMode navigationMode
+	effectsList    list.Model
+	parameterList  list.Model
+	currentSection string // "filter", "overdrive", etc.
+	showHelp       bool
+	showStatus     bool
+	showPagination bool
+	showTitle      bool
+
 	// Pending changes tracking
 	pendingChanges map[control]time.Time
 
@@ -152,7 +170,37 @@ func NewModel(client *osc.Client) Model {
 		connected:           false,
 		client:              client,
 		pendingChanges:      make(map[control]time.Time),
+		navigationMode:      modeEffectsList,
+		currentSection:      "input",
+		showHelp:            true,
+		showStatus:          true,
+		showPagination:      true,
+		showTitle:           true,
 	}
+}
+
+func (m *Model) InitLists(width, height int) {
+	effectsDelegate := list.NewDefaultDelegate()
+
+	m.effectsList = list.New(m.buildEffectsList(), effectsDelegate, width/2, height-4)
+	m.effectsList.Title = "Effects"
+	m.effectsList.SetShowHelp(m.showHelp)
+	m.effectsList.SetShowStatusBar(m.showStatus)
+	m.effectsList.SetShowPagination(m.showPagination)
+	m.effectsList.SetShowTitle(m.showTitle)
+
+	parameterDelegate := list.NewDefaultDelegate()
+	m.parameterList = list.New(nil, parameterDelegate, width/2, height-4)
+	m.parameterList.SetShowHelp(m.showHelp)
+	m.parameterList.SetShowStatusBar(m.showStatus)
+	m.parameterList.SetShowPagination(m.showPagination)
+	m.parameterList.SetShowTitle(m.showTitle)
+
+	m.refreshParameterList()
+}
+
+func (m *Model) refreshParameterList() {
+	m.parameterList.SetItems(m.buildParameterList(m.currentSection))
 }
 
 func (m *Model) ApplyState(s osc.State) {
