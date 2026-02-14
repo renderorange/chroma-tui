@@ -2,64 +2,42 @@ package integration
 
 import (
 	"testing"
-	"time"
 
 	"github.com/renderorange/chroma/chroma-tui/osc"
 	"github.com/renderorange/chroma/chroma-tui/tui"
 )
 
-func TestParameterSync_PendingChangesPreventOverwrites(t *testing.T) {
-	// This test specifically verifies that the settings bug fix works:
-	// When user adjusts a parameter, the markPendingChange() call prevents
-	// server state updates from overwriting the user's change.
+func TestParameterSync_FireAndForget(t *testing.T) {
+	// Test fire-and-forget parameter updates
+	// Chroma uses stateless OSC - no state sync from server
 
 	client := osc.NewClient("127.0.0.1", 57126)
 	model := tui.NewModel(client)
 
-	// Simulate the exact scenario from the bug:
-	// 1. User has gain set to 0.5
+	// Set initial gain
 	initialGain := float32(0.5)
 	model.Gain = initialGain
 
-	// 2. User adjusts gain using left/right keys (this should mark pending change)
-	// We simulate this by calling the test helper methods
-	model.SetFocused(tui.TestCtrlGain) // Use test helper to set focus
-	model.AdjustFocused(0.05)          // This should now call markPendingChange()
-	userAdjustedGain := model.Gain     // Should be ~0.7
+	// User adjusts gain
+	model.SetFocused(tui.TestCtrlGain)
+	model.AdjustFocused(0.05)
+	userAdjustedGain := model.Gain
 
 	if userAdjustedGain <= initialGain {
 		t.Errorf("Expected gain to increase from %f, got %f", initialGain, userAdjustedGain)
 	}
 
-	// 3. Server sends state update with old gain value (race condition)
-	oldServerState := osc.State{
-		Gain:         initialGain, // Old value
-		FilterAmount: 0.8,
-		BlendMode:    1,
-	}
-
-	// 4. Apply server state - this should NOT overwrite user's gain change
-	model.ApplyState(oldServerState)
-
-	// 5. Verify user's gain change is preserved
+	// Verify local state is maintained (no server sync to overwrite)
 	if model.Gain != userAdjustedGain {
-		t.Errorf("BUG REPRODUCTION: User's gain change was overwritten! Expected %f, got %f",
+		t.Errorf("User's gain change was not preserved locally: expected %f, got %f",
 			userAdjustedGain, model.Gain)
 	}
 
-	// 6. Verify other parameters (without pending changes) are still updated
-	if model.FilterAmount != 0.8 {
-		t.Errorf("Expected filter amount to be updated (no pending change), got %f", model.FilterAmount)
-	}
-	if model.BlendMode != 1 {
-		t.Errorf("Expected blend mode to be updated (no pending change), got %d", model.BlendMode)
-	}
-
-	t.Log("Settings bug fix verified: pending changes prevent parameter overwrites")
+	t.Log("Fire-and-forget parameter updates verified")
 }
 
 func TestParameterSync_MultipleConcurrentChanges(t *testing.T) {
-	// Test that multiple rapid parameter changes are all preserved
+	// Test that multiple rapid parameter changes all work
 
 	client := osc.NewClient("127.0.0.1", 57127)
 	model := tui.NewModel(client)
@@ -71,29 +49,18 @@ func TestParameterSync_MultipleConcurrentChanges(t *testing.T) {
 
 	// User rapidly changes multiple parameters
 	model.SetFocused(tui.TestCtrlGain)
-	model.AdjustFocused(0.1) // Change gain
+	model.AdjustFocused(0.1)
 	gainAfterChange := model.Gain
 
 	model.SetFocused(tui.TestCtrlFilterCutoff)
-	model.AdjustFocused(0.1) // Change filter cutoff
+	model.AdjustFocused(0.1)
 	cutoffAfterChange := model.FilterCutoff
 
 	model.SetFocused(tui.TestCtrlOverdriveDrive)
-	model.AdjustFocused(0.1) // Change overdrive drive
+	model.AdjustFocused(0.1)
 	driveAfterChange := model.OverdriveDrive
 
-	// Server sends old state (simulating network delay/latency)
-	oldState := osc.State{
-		Gain:           0.5, // Old values
-		FilterCutoff:   1000,
-		OverdriveDrive: 0.3,
-		FilterAmount:   0.8,
-	}
-
-	// Apply old state - none of the user's changes should be overwritten
-	model.ApplyState(oldState)
-
-	// Verify all user changes are preserved
+	// Verify all user changes are preserved locally
 	if model.Gain != gainAfterChange {
 		t.Errorf("Gain change not preserved: expected %f, got %f", gainAfterChange, model.Gain)
 	}
@@ -104,131 +71,96 @@ func TestParameterSync_MultipleConcurrentChanges(t *testing.T) {
 		t.Errorf("Overdrive drive change not preserved: expected %f, got %f", driveAfterChange, model.OverdriveDrive)
 	}
 
-	// Verify non-changed parameters are still updated
-	if model.FilterAmount != 0.8 {
-		t.Errorf("Filter amount not updated: expected 0.8, got %f", model.FilterAmount)
-	}
-
-	t.Log("Multiple concurrent changes preserved correctly")
+	t.Log("Multiple concurrent parameter changes verified")
 }
 
-func TestParameterSync_ToggleControlsWork(t *testing.T) {
-	// Test that toggle controls (bool parameters) also work with pending changes
+func TestParameterSync_TimeoutBasedSync(t *testing.T) {
+	// Test parameter sync without pending changes timeout
+	// (simplified since we removed pending changes)
 
 	client := osc.NewClient("127.0.0.1", 57128)
 	model := tui.NewModel(client)
 
-	// Test input freeze toggle
-	model.InputFrozen = false
-	model.SetFocused(tui.TestCtrlInputFreeze)
-	model.ToggleFocused() // Should toggle to true and mark pending change
+	// Set initial state
+	model.Gain = 0.5
+	model.FilterAmount = 0.3
 
-	// Server sends old state
-	oldState := osc.State{
-		InputFrozen: false, // Old value
-		Gain:        1.0,
+	// User changes gain
+	model.SetFocused(tui.TestCtrlGain)
+	model.AdjustFocused(0.1)
+
+	// Verify local state
+	if model.Gain <= 0.5 {
+		t.Errorf("Expected gain to increase from 0.5, got %f", model.Gain)
 	}
 
-	model.ApplyState(oldState)
-
-	// User's toggle should be preserved
-	if !model.InputFrozen {
-		t.Error("Input freeze toggle not preserved by pending changes")
-	}
-
-	// Test granular freeze toggle
-	model.GranularFrozen = false
-	model.SetFocused(tui.TestCtrlGranularFreeze)
-	model.ToggleFocused() // Should toggle to true and mark pending change
-
-	// Server sends old state
-	oldState = osc.State{
-		InputFrozen: false, // Old value
-		Gain:        1.0,
-	}
-
-	model.ApplyState(oldState)
-
-	// User's toggle should be preserved
-	if !model.InputFrozen {
-		t.Error("Input freeze toggle not preserved by pending changes")
-	}
-
-	// Test granular freeze toggle
-	model.GranularFrozen = false
-	model.SetFocused(tui.TestCtrlGranularFreeze)
-	model.ToggleFocused() // Should toggle to true and mark pending change
-
-	model.ApplyState(oldState)
-
-	if !model.GranularFrozen {
-		t.Error("Granular freeze toggle not preserved by pending changes")
-	}
-
-	t.Log("Toggle controls work with pending changes")
+	t.Log("Parameter sync verified (fire-and-forget model)")
 }
 
-func TestParameterSync_StaleChangesAreCleared(t *testing.T) {
-	// Test that stale pending changes are eventually cleared
+func TestParameterSync_EffectsOrder(t *testing.T) {
+	// Test effects order handling
 
 	client := osc.NewClient("127.0.0.1", 57129)
 	model := tui.NewModel(client)
 
-	// User changes a parameter
-	model.Gain = 0.8
-	model.SetFocused(tui.TestCtrlGain)
-	model.AdjustFocused(0.05) // Should mark pending change
-	userSetGain := model.Gain
-
-	// Server sends different value
-	state1 := osc.State{Gain: 0.9}
-	model.ApplyState(state1)
-
-	// User's change should be preserved initially
-	if model.Gain != userSetGain {
-		t.Errorf("User change should be preserved initially, got %f", model.Gain)
+	// Get default effects order
+	defaultOrder := model.GetEffectsOrder()
+	if len(defaultOrder) != 6 {
+		t.Errorf("Expected 6 effects in default order, got %d", len(defaultOrder))
 	}
 
-	// Wait longer than the 500ms timeout
-	time.Sleep(600 * time.Millisecond)
+	// Set custom effects order
+	customOrder := []string{"reverb", "delay", "filter", "overdrive", "bitcrush", "granular"}
+	model.SetEffectsOrder(customOrder)
 
-	// Now server should be able to update the value
-	state2 := osc.State{Gain: 1.2}
-	model.ApplyState(state2)
-
-	if model.Gain != 1.2 {
-		t.Errorf("Stale pending change not cleared, expected 1.2, got %f", model.Gain)
+	// Verify order is set locally
+	currentOrder := model.GetEffectsOrder()
+	for i, effect := range customOrder {
+		if currentOrder[i] != effect {
+			t.Errorf("Expected effect %d to be %s, got %s", i, effect, currentOrder[i])
+		}
 	}
 
-	t.Log("Stale pending changes cleared correctly")
+	t.Log("Effects order handling verified")
 }
 
-func TestParameterSync_SetBlendModePreserved(t *testing.T) {
-	// Test that setBlendMode also works with pending changes
+func TestParameterSync_BlendMode(t *testing.T) {
+	// Test blend mode parameter updates
 
 	client := osc.NewClient("127.0.0.1", 57130)
 	model := tui.NewModel(client)
 
-	// User changes blend mode
-	model.SetBlendMode(2) // Should call markPendingChange for ctrlBlendMode
-
-	// Server sends old blend mode
-	oldState := osc.State{
-		BlendMode: 0, // Old value
-		Gain:      1.0,
+	// Test initial blend mode
+	if model.BlendMode != 0 {
+		t.Errorf("Expected initial blend mode to be 0, got %d", model.BlendMode)
 	}
 
-	model.ApplyState(oldState)
+	// Change blend mode
+	model.SetBlendMode(1)
+	if model.BlendMode != 1 {
+		t.Errorf("Expected blend mode to be 1, got %d", model.BlendMode)
+	}
 
-	// User's blend mode should be preserved
+	model.SetBlendMode(2)
 	if model.BlendMode != 2 {
-		t.Errorf("Blend mode change not preserved: expected 2, got %d", model.BlendMode)
+		t.Errorf("Expected blend mode to be 2, got %d", model.BlendMode)
 	}
 
-	// Other parameters should still update
-	if model.Gain != 1.0 {
-		t.Errorf("Gain not updated: expected 1.0, got %f", model.Gain)
+	t.Log("Blend mode updates verified")
+}
+
+func TestParameterSync_GrainIntensity(t *testing.T) {
+	// Test grain intensity cycling
+
+	client := osc.NewClient("127.0.0.1", 57131)
+	model := tui.NewModel(client)
+
+	// Test initial intensity
+	if model.GrainIntensity != "subtle" {
+		t.Errorf("Expected initial grain intensity to be 'subtle', got %s", model.GrainIntensity)
 	}
 
-	t.Log("Blend mode changes preserved correctly")
+	// Note: Grain intensity is toggled via toggleGrainIntensity() which is private
+	// We can only test that the initial value is correct
+	t.Log("Grain intensity initial state verified")
 }

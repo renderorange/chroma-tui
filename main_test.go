@@ -4,7 +4,6 @@ import (
 	"flag"
 	"os"
 	"testing"
-	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/renderorange/chroma/chroma-tui/config"
@@ -83,18 +82,11 @@ func TestMain_ComponentCreation(t *testing.T) {
 	// Test that main components can be created with valid parameters
 	scHost := "127.0.0.1"
 	scPort := 57120
-	listenPort := 9000
 
 	// Create OSC client
 	client := osc.NewClient(scHost, scPort)
 	if client == nil {
 		t.Fatal("expected non-nil OSC client")
-	}
-
-	// Create OSC server
-	server := osc.NewServer(listenPort)
-	if server == nil {
-		t.Fatal("expected non-nil OSC server")
 	}
 
 	// Create TUI model
@@ -137,49 +129,23 @@ func TestMain_TeaProgramCreation(t *testing.T) {
 	}
 }
 
-func TestMain_OSCClientServerIntegration(t *testing.T) {
-	// Test that OSC client and server can be created together
+func TestMain_OSCClientIntegration(t *testing.T) {
+	// Test that OSC client can be created and used
 	scHost := "127.0.0.1"
 	scPort := 57121 // Use different port to avoid conflicts
-	listenPort := 9001
 
 	client := osc.NewClient(scHost, scPort)
-	server := osc.NewServer(listenPort)
 
-	// Verify both are created
+	// Verify client is created
 	if client == nil {
 		t.Fatal("expected non-nil OSC client")
 	}
-	if server == nil {
-		t.Fatal("expected non-nil OSC server")
-	}
-
-	// Test that server can be started (in background for testing)
-	serverStopped := make(chan error, 1)
-	go func() {
-		if err := server.Start(); err != nil {
-			serverStopped <- err
-		}
-	}()
-
-	// Give server time to start
-	time.Sleep(100 * time.Millisecond)
 
 	// Test that client can send a basic message
+	// Note: This sends to a non-existent server, but UDP doesn't error
 	err := client.SendSync()
 	if err != nil {
 		t.Errorf("expected no error sending sync message, got %v", err)
-	}
-
-	// Note: Server doesn't have explicit Stop method in current implementation
-	// Server will be cleaned up when the test ends
-	select {
-	case err := <-serverStopped:
-		if err != nil {
-			t.Errorf("server stopped with error: %v", err)
-		}
-	case <-time.After(time.Second):
-		t.Log("server is running (no explicit stop needed for test)")
 	}
 }
 
@@ -214,12 +180,6 @@ func TestMain_ErrorHandling(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", -1)
 	if client == nil {
 		t.Fatal("expected client to handle invalid port gracefully")
-	}
-
-	// Test with invalid listen port
-	server := osc.NewServer(-1)
-	if server == nil {
-		t.Fatal("expected server to handle invalid listen port gracefully")
 	}
 }
 

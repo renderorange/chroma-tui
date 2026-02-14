@@ -55,14 +55,8 @@ func (m Model) View() string {
 		midiStatus = "No MIDI"
 	}
 
-	pendingCount := len(m.pendingChanges)
-	pendingStatus := ""
-	if pendingCount > 0 {
-		pendingStatus = fmt.Sprintf(" | %d pending", pendingCount)
-	}
-
 	statusBar := statusBarStyle.Render(
-		fmt.Sprintf("%s | MIDI: %s%s", connectionStatus, midiStatus, pendingStatus),
+		fmt.Sprintf("%s | MIDI: %s", connectionStatus, midiStatus),
 	)
 
 	return appStyle.Render(listView) + "\n" + statusBar

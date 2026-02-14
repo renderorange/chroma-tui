@@ -2,7 +2,6 @@ package tui
 
 import (
 	"testing"
-	"time"
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
@@ -231,19 +230,6 @@ func TestModel_GetEffectsOrder(t *testing.T) {
 	}
 }
 
-func TestModel_cleanupStalePendingChanges(t *testing.T) {
-	client := osc.NewClient("127.0.0.1", 57120)
-	model := NewModel(client)
-	model.InitLists(80, 40)
-
-	model.pendingChanges[ctrlGain] = time.Now().Add(-600 * time.Millisecond)
-	model.cleanupStalePendingChanges()
-
-	if len(model.pendingChanges) != 0 {
-		t.Errorf("expected no pending changes after cleanup, got %d", len(model.pendingChanges))
-	}
-}
-
 func TestUpdate_Init(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
@@ -399,22 +385,6 @@ func TestHelper_SetBlendMode(t *testing.T) {
 	}
 }
 
-func TestHelper_HasPendingChange(t *testing.T) {
-	client := osc.NewClient("127.0.0.1", 57120)
-	m := NewModel(client)
-	m.InitLists(80, 40)
-
-	m.markPendingChange(ctrlGain)
-	if !m.HasPendingChange(ctrlGain) {
-		t.Error("expected pending change to exist")
-	}
-
-	m.clearPendingChange(ctrlGain)
-	if m.HasPendingChange(ctrlGain) {
-		t.Error("expected pending change to be cleared")
-	}
-}
-
 func TestView_ModeEffectsList(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
@@ -468,24 +438,5 @@ func TestUpdate_WindowSize(t *testing.T) {
 	m := updatedModel.(*Model)
 	if m.width != 100 || m.height != 50 {
 		t.Errorf("expected width=100, height=50, got width=%d, height=%d", m.width, m.height)
-	}
-}
-
-func TestUpdate_StateMessage(t *testing.T) {
-	client := osc.NewClient("127.0.0.1", 57120)
-	model := NewModel(client)
-	model.InitLists(80, 40)
-
-	state := osc.State{
-		Gain:          0.8,
-		FilterEnabled: true,
-		FilterCutoff:  3000,
-	}
-	msg := StateMsg(state)
-	updatedModel, _ := model.Update(msg)
-
-	m := updatedModel.(*Model)
-	if m.Gain != 0.8 {
-		t.Errorf("expected Gain=0.8, got %f", m.Gain)
 	}
 }

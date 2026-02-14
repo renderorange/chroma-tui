@@ -2,11 +2,8 @@ package tui
 
 import (
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/renderorange/chroma/chroma-tui/osc"
 	"math"
 )
-
-type StateMsg osc.State
 
 func (m Model) Init() tea.Cmd {
 	return nil
@@ -27,13 +24,6 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case tea.KeyMsg:
 		return m.handleKey(msg)
-
-	case StateMsg:
-		m.ApplyState(osc.State(msg))
-		// Refresh lists with new state
-		m.effectsList.SetItems(m.buildEffectsList())
-		m.refreshParameterList()
-		return m, nil
 	}
 
 	// Delegate to list's Update when in list mode
@@ -186,108 +176,109 @@ func (m *Model) adjustFocused(delta float32) {
 	switch m.focused {
 	case ctrlGain:
 		m.Gain = clamp(m.Gain+delta*2, 0, 2)
-		m.markPendingChange(m.focused)
-		m.client.SetGain(m.Gain)
+		if err := m.client.SetGain(m.Gain); err != nil {
+			// Log error but continue - UDP is best-effort
+		}
 	case ctrlInputFreezeLen:
 		m.InputFreezeLength = clamp(m.InputFreezeLength+delta*0.45, 0.05, 0.5)
-		m.markPendingChange(m.focused)
-		m.client.SetInputFreezeLength(m.InputFreezeLength)
+		if err := m.client.SetInputFreezeLength(m.InputFreezeLength); err != nil {
+		}
 	case ctrlFilterAmount:
 		m.FilterAmount = clamp(m.FilterAmount+delta, 0, 1)
-		m.markPendingChange(m.focused)
-		m.client.SetFilterAmount(m.FilterAmount)
+		if err := m.client.SetFilterAmount(m.FilterAmount); err != nil {
+		}
 	case ctrlFilterCutoff:
 		m.FilterCutoff = clamp(m.FilterCutoff+delta*7800, 200, 8000)
-		m.markPendingChange(m.focused)
-		m.client.SetFilterCutoff(m.FilterCutoff)
+		if err := m.client.SetFilterCutoff(m.FilterCutoff); err != nil {
+		}
 	case ctrlFilterResonance:
 		m.FilterResonance = clamp(m.FilterResonance+delta, 0, 1)
-		m.markPendingChange(m.focused)
-		m.client.SetFilterResonance(m.FilterResonance)
+		if err := m.client.SetFilterResonance(m.FilterResonance); err != nil {
+		}
 	case ctrlOverdriveDrive:
 		m.OverdriveDrive = clamp(m.OverdriveDrive+delta, 0, 1)
-		m.markPendingChange(m.focused)
-		m.client.SetOverdriveDrive(m.OverdriveDrive)
+		if err := m.client.SetOverdriveDrive(m.OverdriveDrive); err != nil {
+		}
 	case ctrlOverdriveTone:
 		m.OverdriveTone = clamp(m.OverdriveTone+delta, 0, 1)
-		m.markPendingChange(m.focused)
-		m.client.SetOverdriveTone(m.OverdriveTone)
+		if err := m.client.SetOverdriveTone(m.OverdriveTone); err != nil {
+		}
 	case ctrlOverdriveBias:
 		m.OverdriveBias = clamp(m.OverdriveBias+delta, -1, 1)
-		m.markPendingChange(m.focused)
-		m.client.SetOverdriveBias(m.OverdriveBias)
+		if err := m.client.SetOverdriveBias(m.OverdriveBias); err != nil {
+		}
 	case ctrlOverdriveMix:
 		m.OverdriveMix = clamp(m.OverdriveMix+delta, 0, 1)
-		m.markPendingChange(m.focused)
-		m.client.SetOverdriveMix(m.OverdriveMix)
+		if err := m.client.SetOverdriveMix(m.OverdriveMix); err != nil {
+		}
 	case ctrlBitDepth:
 		m.BitDepth = clamp(m.BitDepth+delta*12, 4, 16)
-		m.markPendingChange(m.focused)
-		m.client.SetBitDepth(m.BitDepth)
+		if err := m.client.SetBitDepth(m.BitDepth); err != nil {
+		}
 	case ctrlBitcrushSampleRate:
 		m.BitcrushSampleRate = clamp(m.BitcrushSampleRate+delta*43100, 1000, 44100)
-		m.markPendingChange(m.focused)
-		m.client.SetBitcrushSampleRate(m.BitcrushSampleRate)
+		if err := m.client.SetBitcrushSampleRate(m.BitcrushSampleRate); err != nil {
+		}
 	case ctrlBitcrushDrive:
 		m.BitcrushDrive = clamp(m.BitcrushDrive+delta, 0, 1)
-		m.markPendingChange(m.focused)
-		m.client.SetBitcrushDrive(m.BitcrushDrive)
+		if err := m.client.SetBitcrushDrive(m.BitcrushDrive); err != nil {
+		}
 	case ctrlBitcrushMix:
 		m.BitcrushMix = clamp(m.BitcrushMix+delta, 0, 1)
-		m.markPendingChange(m.focused)
-		m.client.SetBitcrushMix(m.BitcrushMix)
+		if err := m.client.SetBitcrushMix(m.BitcrushMix); err != nil {
+		}
 	case ctrlGranularDensity:
 		m.GranularDensity = adjustLogarithmic(m.GranularDensity, delta*0.8, 1, 50)
-		m.markPendingChange(m.focused)
-		m.client.SetGranularDensity(m.GranularDensity)
+		if err := m.client.SetGranularDensity(m.GranularDensity); err != nil {
+		}
 	case ctrlGranularSize:
-		m.GranularSize = adjustLogarithmic(m.GranularSize, delta*0.5, 0.01, 0.5)
-		m.markPendingChange(m.focused)
-		m.client.SetGranularSize(m.GranularSize)
+		m.GranularSize = adjustLogarithmic(m.GranularSize, delta*0.5, 0.01, 2.0)
+		if err := m.client.SetGranularSize(m.GranularSize); err != nil {
+		}
 	case ctrlGranularPitchScatter:
 		m.GranularPitchScatter = clamp(m.GranularPitchScatter+delta, 0, 1)
-		m.markPendingChange(m.focused)
-		m.client.SetGranularPitchScatter(m.GranularPitchScatter)
+		if err := m.client.SetGranularPitchScatter(m.GranularPitchScatter); err != nil {
+		}
 	case ctrlGranularPosScatter:
 		m.GranularPosScatter = clamp(m.GranularPosScatter+delta, 0, 1)
-		m.markPendingChange(m.focused)
-		m.client.SetGranularPosScatter(m.GranularPosScatter)
+		if err := m.client.SetGranularPosScatter(m.GranularPosScatter); err != nil {
+		}
 	case ctrlGranularMix:
 		m.GranularMix = clamp(m.GranularMix+delta, 0, 1)
-		m.markPendingChange(m.focused)
-		m.client.SetGranularMix(m.GranularMix)
+		if err := m.client.SetGranularMix(m.GranularMix); err != nil {
+		}
 	case ctrlReverbDecayTime:
 		m.ReverbDecayTime = clamp(m.ReverbDecayTime+delta*9.5, 0.5, 10)
-		m.markPendingChange(m.focused)
-		m.client.SetReverbDecayTime(m.ReverbDecayTime)
+		if err := m.client.SetReverbDecayTime(m.ReverbDecayTime); err != nil {
+		}
 	case ctrlReverbMix:
 		m.ReverbMix = clamp(m.ReverbMix+delta, 0, 1)
-		m.markPendingChange(m.focused)
-		m.client.SetReverbMix(m.ReverbMix)
+		if err := m.client.SetReverbMix(m.ReverbMix); err != nil {
+		}
 	case ctrlDelayTime:
-		m.DelayTime = clamp(m.DelayTime+delta*0.9, 0.1, 1)
-		m.markPendingChange(m.focused)
-		m.client.SetDelayTime(m.DelayTime)
+		m.DelayTime = clamp(m.DelayTime+delta*1.99, 0.01, 2.0)
+		if err := m.client.SetDelayTime(m.DelayTime); err != nil {
+		}
 	case ctrlDelayDecayTime:
-		m.DelayDecayTime = clamp(m.DelayDecayTime+delta*9.5, 0.5, 10)
-		m.markPendingChange(m.focused)
-		m.client.SetDelayDecayTime(m.DelayDecayTime)
+		m.DelayDecayTime = clamp(m.DelayDecayTime+delta*4.9, 0.1, 5.0)
+		if err := m.client.SetDelayDecayTime(m.DelayDecayTime); err != nil {
+		}
 	case ctrlModRate:
-		m.ModRate = adjustLogarithmic(m.ModRate, delta*0.5, 0.1, 5)
-		m.markPendingChange(m.focused)
-		m.client.SetModRate(m.ModRate)
+		m.ModRate = clamp(m.ModRate+delta*9.9, 0.1, 10.0)
+		if err := m.client.SetModRate(m.ModRate); err != nil {
+		}
 	case ctrlModDepth:
 		m.ModDepth = adjustLogarithmic(m.ModDepth, delta*0.5, 0, 1)
-		m.markPendingChange(m.focused)
-		m.client.SetModDepth(m.ModDepth)
+		if err := m.client.SetModDepth(m.ModDepth); err != nil {
+		}
 	case ctrlDelayMix:
 		m.DelayMix = clamp(m.DelayMix+delta, 0, 1)
-		m.markPendingChange(m.focused)
-		m.client.SetDelayMix(m.DelayMix)
+		if err := m.client.SetDelayMix(m.DelayMix); err != nil {
+		}
 	case ctrlDryWet:
 		m.DryWet = clamp(m.DryWet+delta, 0, 1)
-		m.markPendingChange(m.focused)
-		m.client.SetDryWet(m.DryWet)
+		if err := m.client.SetDryWet(m.DryWet); err != nil {
+		}
 	}
 }
 
@@ -295,43 +286,43 @@ func (m *Model) toggleFocused() {
 	switch m.focused {
 	case ctrlInputFreeze:
 		m.InputFrozen = !m.InputFrozen
-		m.markPendingChange(m.focused)
-		m.client.SetInputFreeze(m.InputFrozen)
+		if err := m.client.SetInputFreeze(m.InputFrozen); err != nil {
+		}
 	case ctrlFilterEnabled:
 		m.FilterEnabled = !m.FilterEnabled
-		m.markPendingChange(m.focused)
-		m.client.SetFilterEnabled(m.FilterEnabled)
+		if err := m.client.SetFilterEnabled(m.FilterEnabled); err != nil {
+		}
 	case ctrlOverdriveEnabled:
 		m.OverdriveEnabled = !m.OverdriveEnabled
-		m.markPendingChange(m.focused)
-		m.client.SetOverdriveEnabled(m.OverdriveEnabled)
+		if err := m.client.SetOverdriveEnabled(m.OverdriveEnabled); err != nil {
+		}
 	case ctrlBitcrushEnabled:
 		m.BitcrushEnabled = !m.BitcrushEnabled
-		m.markPendingChange(m.focused)
-		m.client.SetBitcrushEnabled(m.BitcrushEnabled)
+		if err := m.client.SetBitcrushEnabled(m.BitcrushEnabled); err != nil {
+		}
 	case ctrlGranularEnabled:
 		m.GranularEnabled = !m.GranularEnabled
-		m.markPendingChange(m.focused)
-		m.client.SetGranularEnabled(m.GranularEnabled)
+		if err := m.client.SetGranularEnabled(m.GranularEnabled); err != nil {
+		}
 	case ctrlGranularFreeze:
 		m.GranularFrozen = !m.GranularFrozen
-		m.markPendingChange(m.focused)
-		m.client.SetGranularFreeze(m.GranularFrozen)
+		if err := m.client.SetGranularFreeze(m.GranularFrozen); err != nil {
+		}
 	case ctrlReverbEnabled:
 		m.ReverbEnabled = !m.ReverbEnabled
-		m.markPendingChange(m.focused)
-		m.client.SetReverbEnabled(m.ReverbEnabled)
+		if err := m.client.SetReverbEnabled(m.ReverbEnabled); err != nil {
+		}
 	case ctrlDelayEnabled:
 		m.DelayEnabled = !m.DelayEnabled
-		m.markPendingChange(m.focused)
-		m.client.SetDelayEnabled(m.DelayEnabled)
+		if err := m.client.SetDelayEnabled(m.DelayEnabled); err != nil {
+		}
 	}
 }
 
 func (m *Model) setBlendMode(mode int) {
 	m.BlendMode = mode
-	m.markPendingChange(ctrlBlendMode)
-	m.client.SetBlendMode(mode)
+	if err := m.client.SetBlendMode(mode); err != nil {
+	}
 }
 
 func (m *Model) toggleGrainIntensity() {
@@ -345,8 +336,8 @@ func (m *Model) toggleGrainIntensity() {
 	default:
 		m.GrainIntensity = "subtle"
 	}
-	// Note: GrainIntensity doesn't have a control mapping, so no markPendingChange
-	m.client.SetGrainIntensity(m.GrainIntensity)
+	if err := m.client.SetGrainIntensity(m.GrainIntensity); err != nil {
+	}
 }
 
 func (m *Model) handleEffectsOrderKeys(msg tea.KeyMsg) {
@@ -369,7 +360,8 @@ func (m *Model) handleEffectsOrderKeys(msg tea.KeyMsg) {
 			m.SetEffectsOrder(order)
 			m.selectedEffectIndex-- // Keep selection on moved effect
 			// Trigger OSC update
-			m.client.SetEffectsOrder(order)
+			if err := m.client.SetEffectsOrder(order); err != nil {
+			}
 		}
 	case tea.KeyPgDown:
 		// Move selected effect down in order
@@ -381,7 +373,8 @@ func (m *Model) handleEffectsOrderKeys(msg tea.KeyMsg) {
 			m.SetEffectsOrder(order)
 			m.selectedEffectIndex++ // Keep selection on moved effect
 			// Trigger OSC update
-			m.client.SetEffectsOrder(order)
+			if err := m.client.SetEffectsOrder(order); err != nil {
+			}
 		}
 	case tea.KeyRunes:
 		switch msg.Runes[0] {
@@ -391,7 +384,8 @@ func (m *Model) handleEffectsOrderKeys(msg tea.KeyMsg) {
 			m.SetEffectsOrder(defaultOrder)
 			m.selectedEffectIndex = 0
 			// Trigger OSC update
-			m.client.SetEffectsOrder(defaultOrder)
+			if err := m.client.SetEffectsOrder(defaultOrder); err != nil {
+			}
 		}
 	}
 }

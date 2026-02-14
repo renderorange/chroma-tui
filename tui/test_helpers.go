@@ -22,11 +22,6 @@ func (m *Model) SetBlendMode(mode int) {
 	m.setBlendMode(mode)
 }
 
-// HasPendingChange allows tests to check if a control has pending changes
-func (m *Model) HasPendingChange(ctrl control) bool {
-	return m.hasPendingChange(ctrl)
-}
-
 // TestConstants provides access to control constants for tests
 var (
 	TestCtrlGain                 = ctrlGain

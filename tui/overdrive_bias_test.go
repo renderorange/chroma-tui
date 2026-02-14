@@ -29,16 +29,6 @@ func TestOverdriveBiasImplementation(t *testing.T) {
 		t.Errorf("After -1.5 adjustment expected clamped %.2f, got %.2f", expected, model.OverdriveBias)
 	}
 
-	// Test OSC state updates (clear pending changes first)
-	model.clearPendingChange(TestCtrlOverdriveBias) // Clear pending change for bias control
-	testState := osc.State{
-		OverdriveBias: -0.8,
-	}
-	model.ApplyState(testState)
-	if model.OverdriveBias != -0.8 {
-		t.Errorf("After applying state with bias -0.8, got %.2f", model.OverdriveBias)
-	}
-
 	// Test boundary conditions
 	model.OverdriveBias = 0.0
 	model.AdjustFocused(2.0) // Should clamp to 1.0

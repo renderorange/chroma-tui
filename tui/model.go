@@ -1,8 +1,6 @@
 package tui
 
 import (
-	"time"
-
 	"github.com/charmbracelet/bubbles/list"
 	"github.com/renderorange/chroma/chroma-tui/osc"
 )
@@ -117,9 +115,6 @@ type Model struct {
 	showPagination bool
 	showTitle      bool
 
-	// Pending changes tracking
-	pendingChanges map[control]time.Time
-
 	// OSC
 	client *osc.Client
 }
@@ -169,7 +164,6 @@ func NewModel(client *osc.Client) Model {
 		selectedEffectIndex: 0,
 		connected:           false,
 		client:              client,
-		pendingChanges:      make(map[control]time.Time),
 		navigationMode:      modeEffectsList,
 		currentSection:      "input",
 		showHelp:            true,
@@ -203,128 +197,6 @@ func (m *Model) refreshParameterList() {
 	m.parameterList.SetItems(m.buildParameterList(m.currentSection))
 }
 
-func (m *Model) ApplyState(s osc.State) {
-	// Clean up stale pending changes
-	m.cleanupStalePendingChanges()
-
-	// Only update values that don't have pending user changes
-	if !m.hasPendingChange(ctrlGain) {
-		m.Gain = s.Gain
-	}
-	if !m.hasPendingChange(ctrlInputFreeze) {
-		m.InputFrozen = s.InputFrozen
-	}
-	if !m.hasPendingChange(ctrlInputFreezeLen) {
-		m.InputFreezeLength = s.InputFreezeLength
-	}
-	if !m.hasPendingChange(ctrlFilterEnabled) {
-		m.FilterEnabled = s.FilterEnabled
-	}
-	if !m.hasPendingChange(ctrlFilterAmount) {
-		m.FilterAmount = s.FilterAmount
-	}
-	if !m.hasPendingChange(ctrlFilterCutoff) {
-		m.FilterCutoff = s.FilterCutoff
-	}
-	if !m.hasPendingChange(ctrlFilterResonance) {
-		m.FilterResonance = s.FilterResonance
-	}
-	if !m.hasPendingChange(ctrlOverdriveEnabled) {
-		m.OverdriveEnabled = s.OverdriveEnabled
-	}
-	if !m.hasPendingChange(ctrlOverdriveDrive) {
-		m.OverdriveDrive = s.OverdriveDrive
-	}
-	if !m.hasPendingChange(ctrlOverdriveTone) {
-		m.OverdriveTone = s.OverdriveTone
-	}
-	if !m.hasPendingChange(ctrlOverdriveBias) {
-		m.OverdriveBias = s.OverdriveBias
-	}
-	if !m.hasPendingChange(ctrlOverdriveMix) {
-		m.OverdriveMix = s.OverdriveMix
-	}
-	if !m.hasPendingChange(ctrlGranularEnabled) {
-		m.GranularEnabled = s.GranularEnabled
-	}
-	if !m.hasPendingChange(ctrlGranularDensity) {
-		m.GranularDensity = s.GranularDensity
-	}
-	if !m.hasPendingChange(ctrlGranularSize) {
-		m.GranularSize = s.GranularSize
-	}
-	if !m.hasPendingChange(ctrlGranularPitchScatter) {
-		m.GranularPitchScatter = s.GranularPitchScatter
-	}
-	if !m.hasPendingChange(ctrlGranularPosScatter) {
-		m.GranularPosScatter = s.GranularPosScatter
-	}
-	if !m.hasPendingChange(ctrlGranularMix) {
-		m.GranularMix = s.GranularMix
-	}
-	if !m.hasPendingChange(ctrlGranularFreeze) {
-		m.GranularFrozen = s.GranularFrozen
-	}
-	// Note: GrainIntensity doesn't have a direct control mapping, so always update
-	m.GrainIntensity = s.GrainIntensity
-	if !m.hasPendingChange(ctrlBitcrushEnabled) {
-		m.BitcrushEnabled = s.BitcrushEnabled
-	}
-	if !m.hasPendingChange(ctrlBitDepth) {
-		m.BitDepth = s.BitDepth
-	}
-	if !m.hasPendingChange(ctrlBitcrushSampleRate) {
-		m.BitcrushSampleRate = s.BitcrushSampleRate
-	}
-	if !m.hasPendingChange(ctrlBitcrushDrive) {
-		m.BitcrushDrive = s.BitcrushDrive
-	}
-	if !m.hasPendingChange(ctrlBitcrushMix) {
-		m.BitcrushMix = s.BitcrushMix
-	}
-	if !m.hasPendingChange(ctrlReverbEnabled) {
-		m.ReverbEnabled = s.ReverbEnabled
-	}
-	if !m.hasPendingChange(ctrlReverbDecayTime) {
-		m.ReverbDecayTime = s.ReverbDecayTime
-	}
-	if !m.hasPendingChange(ctrlReverbMix) {
-		m.ReverbMix = s.ReverbMix
-	}
-	if !m.hasPendingChange(ctrlDelayEnabled) {
-		m.DelayEnabled = s.DelayEnabled
-	}
-	if !m.hasPendingChange(ctrlDelayTime) {
-		m.DelayTime = s.DelayTime
-	}
-	if !m.hasPendingChange(ctrlDelayDecayTime) {
-		m.DelayDecayTime = s.DelayDecayTime
-	}
-	if !m.hasPendingChange(ctrlModRate) {
-		m.ModRate = s.ModRate
-	}
-	if !m.hasPendingChange(ctrlModDepth) {
-		m.ModDepth = s.ModDepth
-	}
-	if !m.hasPendingChange(ctrlDelayMix) {
-		m.DelayMix = s.DelayMix
-	}
-	if !m.hasPendingChange(ctrlBlendMode) {
-		m.BlendMode = s.BlendMode
-	}
-	if !m.hasPendingChange(ctrlDryWet) {
-		m.DryWet = s.DryWet
-	}
-
-	// Always update effects order
-	if len(s.EffectsOrder) > 0 {
-		m.SetEffectsOrder(s.EffectsOrder)
-	}
-
-	// Connection status is always updated
-	m.connected = true
-}
-
 func (m *Model) NextControl() {
 	m.focused = (m.focused + 1) % ctrlCount
 }
@@ -345,27 +217,8 @@ func (m *Model) SetMidiPort(name string) {
 	m.midiPort = name
 }
 
-func (m *Model) markPendingChange(ctrl control) {
-	m.pendingChanges[ctrl] = time.Now()
-}
-
-func (m *Model) hasPendingChange(ctrl control) bool {
-	_, exists := m.pendingChanges[ctrl]
-	return exists
-}
-
-func (m *Model) clearPendingChange(ctrl control) {
-	delete(m.pendingChanges, ctrl)
-}
-
-func (m *Model) cleanupStalePendingChanges() {
-	// Remove pending changes older than 500ms
-	cutoff := time.Now().Add(-500 * time.Millisecond)
-	for ctrl, timestamp := range m.pendingChanges {
-		if timestamp.Before(cutoff) {
-			delete(m.pendingChanges, ctrl)
-		}
-	}
+func (m *Model) SetConnected(connected bool) {
+	m.connected = connected
 }
 
 func (m *Model) SetEffectsOrder(order []string) {

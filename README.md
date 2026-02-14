@@ -26,7 +26,6 @@ This repository contains the Go-based terminal user interface (TUI) component of
 - **Auto-Detect**: Automatic MIDI device discovery and connection
 
 ### Advanced Features
-- **Bidirectional OSC**: Real-time synchronization with SuperCollider engine
 - **Effects Reordering**: Visual chain reordering with persistence and OSC sync
 - **Three-Column UI**: Organized parameter layout for efficient workflow
 - **Configuration Persistence**: User preferences and effects order memory
@@ -60,7 +59,20 @@ This TUI requires the Chroma SuperCollider audio engine to function. Please inst
 - **Repository**: [Chroma](https://github.com/renderorange/chroma)
 - **Setup**: Follow installation instructions in Chroma repository
 
-The TUI will connect to the running Chroma engine via OSC protocol (localhost:57120/9000).
+The TUI will connect to the running Chroma engine via OSC protocol (localhost:57120).
+
+## Architecture
+
+Chroma-TUI communicates with Chroma via **stateless OSC over UDP**. This means:
+
+- The TUI sends control messages to Chroma (fire-and-forget)
+- Chroma processes audio independently and maintains its own state
+- There is no two-way synchronization of parameters
+- The TUI's displayed values reflect what was last sent, not necessarily Chroma's current state
+- Multiple TUI instances can control the same Chroma instance
+- If Chroma restarts, it will use default values until the TUI sends new commands
+
+This design provides low latency and simplicity but means the TUI does not receive confirmation that commands were received.
 
 ## Quick Start
 
