@@ -17,7 +17,6 @@ This repository contains the Go-based terminal user interface (TUI) component of
 ### Real-time Control System
 - **Effects Reordering**: Visual chain reordering with PgUp/PgDn controls
 - **Three-State Intensity**: Granular intensity (subtle/pronounced/extreme) and blend modes
-- **Logarithmic Scaling**: Natural parameter response for density, size, modulation
 
 ### MIDI Integration
 - **11 CC Mappings**: Hardware controller support
@@ -25,28 +24,19 @@ This repository contains the Go-based terminal user interface (TUI) component of
 - **Customizable**: TOML-based configuration for custom mappings
 - **Auto-Detect**: Automatic MIDI device discovery and connection
 
-### Advanced Features
-- **Effects Reordering**: Visual chain reordering with persistence and OSC sync
-- **Three-Column UI**: Organized parameter layout for efficient workflow
-- **Configuration Persistence**: User preferences and effects order memory
-
 ### Effects Reordering System
 
 The TUI provides real-time effects chain reordering:
 
-#### Visual Interface
-- Three-column layout shows
-- Selected effect highlighted for clarity
-- Current processing order displayed top-to-bottom
-
 #### Controls
-- **Navigation**: Tab/↑/↓ to select effect
-- **Reordering**: PageUp to move up, PageDown to move down
+- **Navigation**: Tab/↑/↓/j/k to select effect or parameter
+- **Panel Switching**: Enter to open parameter panel, Esc to return to effects list
+- **Reordering**: PageUp to move effect up, PageDown to move down
 - **Reset**: 'r' key to restore default order
 - **Persistence**: Order saved and restored across sessions
 
 #### OSC Integration
-Effects order changes are transmitted via `/chroma/effectsOrder` endpoint for real-time SuperCollider synchronization.
+Effects order changes are transmitted via `/chroma/effectsOrder` endpoint.
 
 #### Default Processing Order
 ```
@@ -92,7 +82,7 @@ go build -o chroma-tui
 
 ### System Requirements
 - **Go 1.24+**: For building the TUI
-- **Terminal**: With proper Unicode and color support
+- **Terminal**: With proper Unicode and color support (minimum 60x20 size)
 - **Chroma SuperCollider**: External audio engine (required)
 
 ## Controls
@@ -100,26 +90,23 @@ go build -o chroma-tui
 ### Keyboard Navigation
 | Navigation | Action |
 |------------|--------|
-| `Tab`, `↓`, `j` | Next parameter |
-| `Shift+Tab`, `↑`, `k` | Previous parameter |
+| `Tab`, `↓`, `j` | Next parameter/effect |
+| `Shift+Tab`, `↑`, `k` | Previous parameter/effect |
+| `Enter` | Open parameter panel (from effects list) |
+| `Esc` | Return to effects list (from parameters) |
 | `←`, `h` | Decrease parameter value |
 | `→`, `l` | Increase parameter value |
-| `Enter`, `Space` | Toggle boolean parameters |
+| `Space` | Toggle boolean parameters |
 
 ### Special Controls
 | Key | Action |
 |-----|--------|
 | `i` | Cycle grain intensity (subtle → pronounced → extreme) |
 | `1`, `2`, `3` | Set blend mode (Mirror, Complement, Transform) |
+| `PageUp` | Move selected effect up in chain (global section) |
+| `PageDown` | Move selected effect down in chain (global section) |
+| `r` | Reset effects order to default (global section) |
 | `q`, `Ctrl+C` | Quit application |
-
-### Effects Reordering (when Effects Order is focused)
-| Key | Action |
-|-----|--------|
-| `↑`, `↓`, `Tab` | Navigate effect list |
-| `PageUp` | Move selected effect up in chain |
-| `PageDown` | Move selected effect down in chain |
-| `r` | Reset to default order |
 
 ### Parameter Reference
 
@@ -190,7 +177,7 @@ go build -o chroma-tui
 |-----------|-------|---------|---------|
 | Blend Mode | Mirror/Complement/Transform | Mirror | Three-state |
 | Dry/Wet | 0.0 - 1.0 | 0.5 | Linear |
-| Effects Order | Customizable | filter→overdrive→bitcrush→granular→reverb→delay | Reorderable |
+| Effects Order | Customizable | filter→overdrive→bitcrush→granular→reverb→delay | Reorderable (PageUp/PageDown) |
 
 ### Special Parameter Behaviors
 
@@ -204,8 +191,10 @@ go build -o chroma-tui
 - **GrainIntensity**: Cycle with `i` key → subtle → pronounced → extreme → subtle
 - **BlendMode**: `1`/`2`/`3` keys or MIDI notes → Mirror (0) → Complement (1) → Transform (2)
 
-#### Pending Changes System
-Parameters recently adjusted by user (within 500ms) are protected from OSC overwrites for responsive control.
+#### Dynamic Interface
+- **Slider Width**: Automatically scales based on terminal width (minimum 10 characters)
+- **Panel Ratio**: 25/75 split between effects list and parameters
+- **Context Footer**: Shows relevant keybindings for current mode (effects list, parameters, or global section)
 
 ### MIDI Integration
 
@@ -321,17 +310,18 @@ GOOS=windows GOARCH=amd64 go build -o chroma-tui.exe
 │   TUI Repo    │ ←───────────────→ │ Chroma Engine    │
 │ (This Repo)   │                  │ (External)       │
 │               │                  │                  │
-│ • 35+ Parameters │              │ • Audio Engine   │
-│ • Effects Order │              │ • Effects        │
-│ • MIDI Mapping  │              │ • State Sync     │
-│ • OSC Client    │              │ • OSC Server     │
-│ • OSC Server    │              │                  │
-│ • Config System │              │                  │
+│ • UI Layout   │                  │ • Audio Engine   │
+│ • 38 Parameters │                │ • Effects        │
+│ • Effects Order │                │ • State Sync     │
+│ • MIDI Mapping  │                │ • OSC Server     │
+│ • OSC Client    │                │                  │
+│ • OSC Server    │                │                  │
+│ • Config System │                │                  │
 └─────────────────┘                  └────────────────────┘
 ```
 
 ### Component Architecture
-- **TUI/**: Terminal interface, state management, user interaction
+- **TUI/**: Terminal interface with side-by-side layout, dynamic sliders, context-sensitive footer
 - **OSC/**: Bidirectional communication, parameter synchronization
 - **MIDI/**: Hardware controller integration, mapping system
 - **Config/**: User preferences, MIDI configuration, persistence
@@ -369,8 +359,9 @@ Solution:
 - Test OSC messages manually with oscsend utility
 
 **Effects Reordering Not Working**
-- Ensure Effects Order parameter is selected (highlighted border)
-- Use PageUp/PageDown, not arrow keys for reordering
+- Ensure you're in the global section (navigate to Effects Order in parameter list)
+- Use PageUp/PageDown for reordering (arrow keys navigate the list)
+- Press Enter from effects list to access parameter panel
 - Check OSC connection for order synchronization
 - Reset with 'r' key if order becomes corrupted
 
@@ -386,6 +377,8 @@ Solution:
 - Pending changes system prevents OSC overwrites during active adjustment
 - Parameters return to normal sync after 500ms of inactivity
 - Check network latency for OSC communication
+- Focused panel shows green border, unfocused shows gray border
+- Footer updates dynamically based on current navigation mode
 
 ### System Verification
 
