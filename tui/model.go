@@ -174,9 +174,13 @@ func NewModel(client *osc.Client) Model {
 }
 
 func (m *Model) InitLists(width, height int) {
-	effectsDelegate := list.NewDefaultDelegate()
+	availableWidth := width - 4 // subtract app padding (Padding(1,2) = 2 chars each side)
+	leftWidth := availableWidth*3/10 - 2
+	rightWidth := availableWidth - leftWidth - 2
+	listHeight := height - 6 // subtract app padding (1 top, 1 bottom) + border (1 top, 1 bottom) + status bar (1) + margin (1)
 
-	m.effectsList = list.New(m.buildEffectsList(), effectsDelegate, width/2, height-4)
+	effectsDelegate := list.NewDefaultDelegate()
+	m.effectsList = list.New(m.buildEffectsList(), effectsDelegate, leftWidth, listHeight)
 	m.effectsList.Title = "Effects"
 	m.effectsList.SetShowHelp(m.showHelp)
 	m.effectsList.SetShowStatusBar(m.showStatus)
@@ -184,13 +188,14 @@ func (m *Model) InitLists(width, height int) {
 	m.effectsList.SetShowTitle(m.showTitle)
 
 	parameterDelegate := list.NewDefaultDelegate()
-	m.parameterList = list.New(nil, parameterDelegate, width/2, height-4)
+	m.parameterList = list.New(nil, parameterDelegate, rightWidth, listHeight)
 	m.parameterList.SetShowHelp(m.showHelp)
 	m.parameterList.SetShowStatusBar(m.showStatus)
 	m.parameterList.SetShowPagination(m.showPagination)
 	m.parameterList.SetShowTitle(m.showTitle)
 
-	m.refreshParameterList()
+	// Initialize parameter list with first effect's parameters
+	m.syncParameterPanel()
 }
 
 func (m *Model) refreshParameterList() {
@@ -243,7 +248,7 @@ func (m *Model) syncParameterPanel() {
 	items := m.effectsList.Items()
 	if idx >= 0 && idx < len(items) {
 		if eff, ok := items[idx].(effectItem); ok {
-			if m.currentSection != eff.id {
+			if m.currentSection != eff.id || len(m.parameterList.Items()) == 0 {
 				m.currentSection = eff.id
 				m.parameterList.Title = eff.title
 				m.refreshParameterList()

@@ -24,6 +24,14 @@ var (
 
 	connectedStyle    = lipgloss.NewStyle().Foreground(lipgloss.Color("#04B575"))
 	disconnectedStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF5555"))
+
+	focusedBorderStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#25A065"))
+
+	unfocusedBorderStyle = lipgloss.NewStyle().
+				Border(lipgloss.RoundedBorder()).
+				BorderForeground(lipgloss.Color("#555555"))
 )
 
 func (m Model) View() string {
@@ -31,18 +39,23 @@ func (m Model) View() string {
 		return "Loading..."
 	}
 
-	var listView string
-	switch m.navigationMode {
-	case modeEffectsList:
-		listView = m.effectsList.View()
-	case modeParameterList:
-		listView = m.parameterList.View()
-	default:
-		listView = m.effectsList.View()
+	leftView := m.effectsList.View()
+	rightView := m.parameterList.View()
+
+	// Apply border styles based on focus
+	var leftPanel, rightPanel string
+	if m.navigationMode == modeEffectsList {
+		leftPanel = focusedBorderStyle.Render(leftView)
+		rightPanel = unfocusedBorderStyle.Render(rightView)
+	} else {
+		leftPanel = unfocusedBorderStyle.Render(leftView)
+		rightPanel = focusedBorderStyle.Render(rightView)
 	}
 
+	panels := lipgloss.JoinHorizontal(lipgloss.Top, leftPanel, rightPanel)
+
 	if !m.showStatus {
-		return appStyle.Render(listView)
+		return appStyle.Render(panels)
 	}
 
 	connectionStatus := disconnectedStyle.Render("Disconnected")
@@ -59,7 +72,7 @@ func (m Model) View() string {
 		fmt.Sprintf("%s | MIDI: %s", connectionStatus, midiStatus),
 	)
 
-	return appStyle.Render(listView) + "\n" + statusBar
+	return appStyle.Render(panels) + "\n" + statusBar
 }
 
 func formatValue(value, min, max float32) string {

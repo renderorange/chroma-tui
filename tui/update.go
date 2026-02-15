@@ -18,8 +18,12 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if len(m.effectsList.Items()) == 0 {
 			m.InitLists(msg.Width, msg.Height)
 		}
-		m.effectsList.SetSize(msg.Width/2, msg.Height-4)
-		m.parameterList.SetSize(msg.Width/2, msg.Height-4)
+		availableWidth := msg.Width - 4 // subtract app padding (Padding(1,2) = 2 chars each side)
+		leftWidth := availableWidth*3/10 - 2
+		rightWidth := availableWidth - leftWidth - 2
+		listHeight := msg.Height - 6 // subtract app padding (1 top, 1 bottom) + border (1 top, 1 bottom) + status bar (1) + margin (1)
+		m.effectsList.SetSize(leftWidth, listHeight)
+		m.parameterList.SetSize(rightWidth, listHeight)
 		return m, nil
 
 	case tea.KeyMsg:
@@ -126,27 +130,18 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 func (m *Model) handleEnterKey() (tea.Model, tea.Cmd) {
 	switch m.navigationMode {
 	case modeEffectsList:
-		// Drill into selected effect
-		idx := m.effectsList.Index()
-		items := m.effectsList.Items()
-		if idx >= 0 && idx < len(items) {
-			item := items[idx]
-			if eff, ok := item.(effectItem); ok {
-				m.currentSection = eff.id
-				m.navigationMode = modeParameterList
-				m.refreshParameterList()
-			}
-		}
+		// Switch focus to parameter panel
+		m.navigationMode = modeParameterList
+		m.syncParameterPanel()
 
 	case modeParameterList:
-		// Toggle or select parameter
+		// Toggle parameter if it's a toggle item
 		idx := m.parameterList.Index()
 		items := m.parameterList.Items()
 		if idx >= 0 && idx < len(items) {
 			item := items[idx]
 			if param, ok := item.(parameterItem); ok {
 				if param.isToggle {
-					// Toggle the parameter
 					m.toggleByControl(param.ctrl)
 				}
 				m.refreshParameterList()
@@ -159,10 +154,8 @@ func (m *Model) handleEnterKey() (tea.Model, tea.Cmd) {
 func (m *Model) handleEscKey() (tea.Model, tea.Cmd) {
 	switch m.navigationMode {
 	case modeParameterList:
-		// Go back to effects list
+		// Switch focus back to effects panel
 		m.navigationMode = modeEffectsList
-		m.currentSection = "input"
-		m.effectsList.SetItems(m.buildEffectsList())
 	}
 	return m, nil
 }

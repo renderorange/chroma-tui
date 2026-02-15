@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/renderorange/chroma/chroma-tui/osc"
@@ -87,5 +88,23 @@ func TestView_RenderingWithParameterValues(t *testing.T) {
 	view := model.View()
 	if len(view) == 0 {
 		t.Error("expected View() to return non-empty string")
+	}
+}
+
+func TestView_ContainsBothPanels(t *testing.T) {
+	client := osc.NewClient("127.0.0.1", 57120)
+	model := NewModel(client)
+	model.InitLists(100, 40)
+
+	view := model.View()
+
+	// View should contain effects list title
+	if !strings.Contains(view, "Effects") {
+		t.Error("expected view to contain 'Effects' title")
+	}
+
+	// View should contain parameter content (Input is default section)
+	if !strings.Contains(view, "Gain") {
+		t.Error("expected view to contain 'Gain' parameter")
 	}
 }
