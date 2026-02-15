@@ -339,14 +339,6 @@ func (m *Model) toggleGrainIntensity() {
 
 func (m *Model) handleEffectsOrderKeys(msg tea.KeyMsg) {
 	switch msg.Type {
-	case tea.KeyUp, tea.KeyShiftTab:
-		if m.selectedEffectIndex > 0 {
-			m.selectedEffectIndex--
-		}
-	case tea.KeyDown, tea.KeyTab:
-		if m.selectedEffectIndex < len(m.EffectsOrder)-1 {
-			m.selectedEffectIndex++
-		}
 	case tea.KeyPgUp:
 		// Move selected effect up in order
 		if m.selectedEffectIndex > 0 {
