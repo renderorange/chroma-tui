@@ -144,6 +144,59 @@ func TestUpdate_ParameterPanelSyncsWithEffectSelection(t *testing.T) {
 	}
 }
 
+func TestUpdate_FullSideBySideWorkflow(t *testing.T) {
+	client := osc.NewClient("127.0.0.1", 57120)
+	model := NewModel(client)
+	model.InitLists(120, 40)
+
+	// 1. Navigate down to "filter" in effects list
+	downMsg := tea.KeyMsg{Type: tea.KeyDown}
+	result, _ := model.Update(downMsg)
+	m := result.(*Model)
+
+	// Parameter panel should show filter params
+	if m.currentSection != "filter" {
+		t.Errorf("expected section 'filter', got '%s'", m.currentSection)
+	}
+
+	// 2. Press Enter to focus parameter panel
+	enterMsg := tea.KeyMsg{Type: tea.KeyEnter}
+	result, _ = m.Update(enterMsg)
+	m = result.(*Model)
+
+	if m.navigationMode != modeParameterList {
+		t.Errorf("expected parameter list mode")
+	}
+
+	// 3. Navigate down to Amount parameter (index 1, skipping the enabled toggle at index 0)
+	result, _ = m.Update(downMsg)
+	m = result.(*Model)
+
+	// 4. Adjust parameter with right arrow
+	rightMsg := tea.KeyMsg{Type: tea.KeyRight}
+	initialAmount := m.FilterAmount
+	result, _ = m.Update(rightMsg)
+	m = result.(*Model)
+
+	if m.FilterAmount <= initialAmount {
+		t.Errorf("expected FilterAmount to increase, was %f now %f", initialAmount, m.FilterAmount)
+	}
+
+	// 5. Press Esc to go back to effects panel
+	escMsg := tea.KeyMsg{Type: tea.KeyEsc}
+	result, _ = m.Update(escMsg)
+	m = result.(*Model)
+
+	if m.navigationMode != modeEffectsList {
+		t.Errorf("expected effects list mode")
+	}
+
+	// 6. Effects list cursor should still be on filter (index 1)
+	if m.effectsList.Index() != 1 {
+		t.Errorf("expected effects list index 1 (filter), got %d", m.effectsList.Index())
+	}
+}
+
 func TestUpdate_Quit(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
