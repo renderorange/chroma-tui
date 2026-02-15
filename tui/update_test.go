@@ -31,20 +31,6 @@ func TestUpdate_KeyboardNavigation(t *testing.T) {
 	}
 }
 
-func TestUpdate_ArrowKeyNavigation(t *testing.T) {
-	client := osc.NewClient("127.0.0.1", 57120)
-	model := NewModel(client)
-	model.InitLists(80, 40)
-
-	// Test navigation within effects list - list handles this internally
-	// The list should be navigable
-	msg := tea.KeyMsg{Type: tea.KeyDown}
-	updatedModel, _ := model.Update(msg)
-
-	_ = updatedModel.(*Model)
-	// List navigation doesn't change our state directly
-}
-
 func TestUpdate_ParameterAdjustment(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)

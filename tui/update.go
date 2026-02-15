@@ -101,10 +101,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Effects order keys - only in parameter mode with global section
 		if m.currentSection == "global" {
 			switch msg.String() {
-			case "pgup":
-				m.handleEffectsOrderKeys(msg)
-				return m, nil
-			case "pgdown":
+			case "pgup", "pgdown":
 				m.handleEffectsOrderKeys(msg)
 				return m, nil
 			case "r":
