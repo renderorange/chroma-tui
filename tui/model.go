@@ -176,10 +176,32 @@ func NewModel(client *osc.Client) Model {
 // panelDimensions calculates the width and height for the effects
 // and parameter list panels, accounting for app padding and borders.
 func panelDimensions(width, height int) (leftWidth, rightWidth, listHeight int) {
-	availableWidth := width - 4                 // app padding: Padding(1,2) = 2 chars each side
-	leftWidth = availableWidth*3/10 - 2         // 30% minus border (1 char each side)
-	rightWidth = availableWidth - leftWidth - 2 // remainder minus border
-	listHeight = height - 6                     // app padding (2) + borders (2) + status bar (1) + margin (1)
+	// Minimum terminal size guards
+	if width < 60 || height < 20 {
+		return 10, 10, 10
+	}
+
+	availableWidth := width - 4 // app padding: Padding(1,2) = 2 chars each side
+	gap := 2                    // spacing between panels
+
+	// 25% for left panel, 75% for right panel
+	leftWidth = availableWidth/4 - 2                  // minus border (1 char each side)
+	rightWidth = availableWidth - leftWidth - 4 - gap // minus borders and gap
+
+	// Height calculation: app padding (2) + borders (2) + footer (1) + status bar (1)
+	listHeight = height - 6
+
+	// Ensure non-negative dimensions
+	if leftWidth < 5 {
+		leftWidth = 5
+	}
+	if rightWidth < 10 {
+		rightWidth = 10
+	}
+	if listHeight < 5 {
+		listHeight = 5
+	}
+
 	return
 }
 
