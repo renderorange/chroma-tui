@@ -239,5 +239,15 @@ func (m *Model) GetEffectsOrder() []string {
 }
 
 func (m *Model) syncParameterPanel() {
-	// Will be implemented in Task 2
+	idx := m.effectsList.Index()
+	items := m.effectsList.Items()
+	if idx >= 0 && idx < len(items) {
+		if eff, ok := items[idx].(effectItem); ok {
+			if m.currentSection != eff.id {
+				m.currentSection = eff.id
+				m.parameterList.Title = eff.title
+				m.refreshParameterList()
+			}
+		}
+	}
 }

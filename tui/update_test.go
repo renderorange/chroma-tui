@@ -122,6 +122,28 @@ func TestUpdate_ListNavigationDelegation(t *testing.T) {
 	}
 }
 
+func TestUpdate_ParameterPanelSyncsWithEffectSelection(t *testing.T) {
+	client := osc.NewClient("127.0.0.1", 57120)
+	model := NewModel(client)
+	model.InitLists(80, 40)
+
+	// Start at index 0 (input), move down to index 1 (filter)
+	msg := tea.KeyMsg{Type: tea.KeyDown}
+	updatedModel, _ := model.Update(msg)
+	m := updatedModel.(*Model)
+
+	// Current section should now be "filter"
+	if m.currentSection != "filter" {
+		t.Errorf("expected currentSection 'filter', got '%s'", m.currentSection)
+	}
+
+	// Parameter list should have filter parameters (4 items: enabled, amount, cutoff, resonance)
+	items := m.parameterList.Items()
+	if len(items) != 4 {
+		t.Errorf("expected 4 filter parameters, got %d", len(items))
+	}
+}
+
 func TestUpdate_Quit(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
