@@ -420,11 +420,19 @@ func TestUpdate_ParameterListNavigation(t *testing.T) {
 	model.currentSection = "filter"
 	model.refreshParameterList()
 
-	// Test down arrow to navigate parameters
+	// Parameter list should start at index 0
+	if model.parameterList.Index() != 0 {
+		t.Fatalf("expected initial parameter index 0, got %d", model.parameterList.Index())
+	}
+
+	// Press down arrow to navigate parameters
 	msg := tea.KeyMsg{Type: tea.KeyDown}
 	updatedModel, _ := model.Update(msg)
+	m := updatedModel.(*Model)
 
-	_ = updatedModel.(*Model)
+	if m.parameterList.Index() != 1 {
+		t.Errorf("expected parameter list index 1 after down arrow, got %d", m.parameterList.Index())
+	}
 }
 
 func TestUpdate_WindowSize(t *testing.T) {

@@ -26,21 +26,15 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleKey(msg)
 	}
 
-	// Delegate to list's Update when in list mode
-	if m.navigationMode == modeEffectsList {
-		var cmd tea.Cmd
-		m.effectsList, cmd = m.effectsList.Update(msg)
-		return m, cmd
-	} else if m.navigationMode == modeParameterList {
-		var cmd tea.Cmd
-		m.parameterList, cmd = m.parameterList.Update(msg)
-		return m, cmd
-	}
-
-	return m, nil
+	// Delegate non-key messages to both lists
+	var cmd1, cmd2 tea.Cmd
+	m.effectsList, cmd1 = m.effectsList.Update(msg)
+	m.parameterList, cmd2 = m.parameterList.Update(msg)
+	return m, tea.Batch(cmd1, cmd2)
 }
 
 func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	// App-level keys - handle first and return early
 	switch msg.String() {
 	case "q", "ctrl+c":
 		return m, tea.Quit
@@ -51,64 +45,85 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		return m.handleEscKey()
 
-	case "left", "h":
-		if m.navigationMode == modeParameterList {
-			m.adjustSelectedParameter(-0.05)
-			m.refreshParameterList()
-		}
-
-	case "right", "l":
-		if m.navigationMode == modeParameterList {
-			m.adjustSelectedParameter(0.05)
-			m.refreshParameterList()
-		}
-
 	case "H":
 		m.showHelp = !m.showHelp
 		m.effectsList.SetShowHelp(m.showHelp)
 		m.parameterList.SetShowHelp(m.showHelp)
+		return m, nil
 
 	case "S":
 		m.showStatus = !m.showStatus
 		m.effectsList.SetShowStatusBar(m.showStatus)
 		m.parameterList.SetShowStatusBar(m.showStatus)
+		return m, nil
 
 	case "P":
 		m.showPagination = !m.showPagination
 		m.effectsList.SetShowPagination(m.showPagination)
 		m.parameterList.SetShowPagination(m.showPagination)
+		return m, nil
 
 	case "T":
 		m.showTitle = !m.showTitle
 		m.effectsList.SetShowTitle(m.showTitle)
 		m.parameterList.SetShowTitle(m.showTitle)
+		return m, nil
 
 	case "i":
 		m.toggleGrainIntensity()
+		return m, nil
 
 	case "1":
 		m.setBlendMode(0)
+		return m, nil
 	case "2":
 		m.setBlendMode(1)
+		return m, nil
 	case "3":
 		m.setBlendMode(2)
+		return m, nil
+	}
 
-	case "pgup":
-		if m.navigationMode == modeParameterList && m.currentSection == "global" {
-			m.handleEffectsOrderKeys(msg)
-		}
-	case "pgdown":
-		if m.navigationMode == modeParameterList && m.currentSection == "global" {
-			m.handleEffectsOrderKeys(msg)
-		}
-	case "r":
-		if m.navigationMode == modeParameterList && m.currentSection == "global" {
-			m.handleEffectsOrderKeys(msg)
+	// Parameter adjustment keys - only in parameter mode
+	if m.navigationMode == modeParameterList {
+		switch msg.String() {
+		case "left", "h":
+			m.adjustSelectedParameter(-0.05)
 			m.refreshParameterList()
+			return m, nil
+
+		case "right", "l":
+			m.adjustSelectedParameter(0.05)
+			m.refreshParameterList()
+			return m, nil
+		}
+
+		// Effects order keys - only in parameter mode with global section
+		if m.currentSection == "global" {
+			switch msg.String() {
+			case "pgup":
+				m.handleEffectsOrderKeys(msg)
+				return m, nil
+			case "pgdown":
+				m.handleEffectsOrderKeys(msg)
+				return m, nil
+			case "r":
+				m.handleEffectsOrderKeys(msg)
+				m.refreshParameterList()
+				return m, nil
+			}
 		}
 	}
 
-	return m, nil
+	// Delegate all other keys to the active list
+	var cmd tea.Cmd
+	if m.navigationMode == modeEffectsList {
+		m.effectsList, cmd = m.effectsList.Update(msg)
+		m.syncParameterPanel()
+	} else if m.navigationMode == modeParameterList {
+		m.parameterList, cmd = m.parameterList.Update(msg)
+	}
+	return m, cmd
 }
 
 func (m *Model) handleEnterKey() (tea.Model, tea.Cmd) {

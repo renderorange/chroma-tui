@@ -237,3 +237,7 @@ func (m *Model) GetEffectsOrder() []string {
 	}
 	return m.EffectsOrder
 }
+
+func (m *Model) syncParameterPanel() {
+	// Will be implemented in Task 2
+}

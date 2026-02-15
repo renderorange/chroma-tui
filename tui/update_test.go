@@ -116,6 +116,26 @@ func TestUpdate_ToggleControls(t *testing.T) {
 	}
 }
 
+func TestUpdate_ListNavigationDelegation(t *testing.T) {
+	client := osc.NewClient("127.0.0.1", 57120)
+	model := NewModel(client)
+	model.InitLists(80, 40)
+
+	// Effects list should start at index 0
+	if model.effectsList.Index() != 0 {
+		t.Fatalf("expected initial index 0, got %d", model.effectsList.Index())
+	}
+
+	// Press down arrow - should move to index 1
+	msg := tea.KeyMsg{Type: tea.KeyDown}
+	updatedModel, _ := model.Update(msg)
+	m := updatedModel.(*Model)
+
+	if m.effectsList.Index() != 1 {
+		t.Errorf("expected effects list index 1 after down arrow, got %d", m.effectsList.Index())
+	}
+}
+
 func TestUpdate_Quit(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
