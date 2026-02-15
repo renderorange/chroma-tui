@@ -65,11 +65,6 @@ func TestUpdate_ToggleControls(t *testing.T) {
 		getValue func(*Model) bool
 	}{
 		{
-			name:     "Toggle Help",
-			key:      tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("H")},
-			getValue: func(m *Model) bool { return m.showHelp },
-		},
-		{
 			name:     "Toggle Status",
 			key:      tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("S")},
 			getValue: func(m *Model) bool { return m.showStatus },

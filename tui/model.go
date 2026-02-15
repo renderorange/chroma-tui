@@ -167,7 +167,7 @@ func NewModel(client *osc.Client) Model {
 		client:              client,
 		navigationMode:      modeEffectsList,
 		currentSection:      "input",
-		showHelp:            true,
+		showHelp:            false,
 		showStatus:          true,
 		showPagination:      true,
 		showTitle:           true,

@@ -47,12 +47,6 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "esc":
 		return m.handleEscKey()
 
-	case "H":
-		m.showHelp = !m.showHelp
-		m.effectsList.SetShowHelp(m.showHelp)
-		m.parameterList.SetShowHelp(m.showHelp)
-		return m, nil
-
 	case "S":
 		m.showStatus = !m.showStatus
 		m.effectsList.SetShowStatusBar(m.showStatus)
