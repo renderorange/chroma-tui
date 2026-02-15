@@ -104,6 +104,7 @@ type Model struct {
 	midiPort            string
 	width               int
 	height              int
+	sliderWidth         int
 
 	// Navigation state for list-based UI
 	navigationMode navigationMode
@@ -170,6 +171,7 @@ func NewModel(client *osc.Client) Model {
 		showStatus:          true,
 		showPagination:      true,
 		showTitle:           true,
+		sliderWidth:         10, // default, will be recalculated on resize
 	}
 }
 
@@ -228,6 +230,14 @@ func (m *Model) InitLists(width, height int) {
 }
 
 func (m *Model) refreshParameterList() {
+	_, rightWidth, _ := panelDimensions(m.width, m.height)
+
+	// Calculate slider width: panel width - max title - value width - padding
+	m.sliderWidth = rightWidth - 24 - 9 - 4
+	if m.sliderWidth < 10 {
+		m.sliderWidth = 10
+	}
+
 	m.parameterList.SetItems(m.buildParameterList(m.currentSection))
 }
 

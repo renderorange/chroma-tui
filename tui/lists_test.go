@@ -1,6 +1,7 @@
 package tui
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/charmbracelet/bubbles/list"
@@ -29,12 +30,12 @@ func TestLists_effectItem(t *testing.T) {
 
 func TestLists_parameterItem(t *testing.T) {
 	item := parameterItem{
-		id:          "test",
-		title:       "Test Title",
-		description: "Test Description",
-		ctrl:        ctrlGain,
-		isToggle:    true,
-		isActive:    false,
+		id:                "test",
+		title:             "Test Title",
+		customDescription: "Test Description",
+		ctrl:              ctrlGain,
+		isToggle:          true,
+		isActive:          false,
 	}
 
 	if item.Title() != "Test Title" {
@@ -67,7 +68,7 @@ func TestLists_newEffectItem(t *testing.T) {
 }
 
 func TestLists_newParameterItem(t *testing.T) {
-	item := newParameterItem("gain", "Gain", "0.50", ctrlGain, false, false)
+	item := newParameterItem("gain", "Gain", 0.5, 0, 2, ctrlGain, false, false, 10)
 	if item.id != "gain" {
 		t.Errorf("expected id 'gain', got %s", item.id)
 	}
@@ -78,7 +79,7 @@ func TestLists_newParameterItem(t *testing.T) {
 		t.Error("expected isToggle to be false")
 	}
 
-	toggleItem := newParameterItem("enabled", "Enabled", "Toggle", ctrlFilterEnabled, true, true)
+	toggleItem := newParameterItem("enabled", "Enabled", 0, 0, 0, ctrlFilterEnabled, true, true, 10)
 	if !toggleItem.isToggle {
 		t.Error("expected isToggle to be true")
 	}
@@ -251,7 +252,7 @@ func TestUpdate_handleEnterKey_parameterMode(t *testing.T) {
 
 	// Select a toggle item and press enter
 	model.parameterList.SetItems([]list.Item{
-		newParameterItem("enabled", "Filter", "Toggle", ctrlFilterEnabled, true, false),
+		newParameterItem("enabled", "Filter", 0, 0, 0, ctrlFilterEnabled, true, false, 10),
 	})
 	model.parameterList.Select(0)
 
@@ -446,5 +447,57 @@ func TestUpdate_WindowSize(t *testing.T) {
 	m := updatedModel.(*Model)
 	if m.width != 100 || m.height != 50 {
 		t.Errorf("expected width=100, height=50, got width=%d, height=%d", m.width, m.height)
+	}
+}
+
+func TestFormatSliderValue_DynamicWidth(t *testing.T) {
+	tests := []struct {
+		name        string
+		value       float32
+		min         float32
+		max         float32
+		sliderWidth int
+		wantFilled  int
+	}{
+		{
+			name:        "10 char slider at 50%",
+			value:       0.5,
+			min:         0,
+			max:         1,
+			sliderWidth: 10,
+			wantFilled:  5,
+		},
+		{
+			name:        "20 char slider at 50%",
+			value:       0.5,
+			min:         0,
+			max:         1,
+			sliderWidth: 20,
+			wantFilled:  10,
+		},
+		{
+			name:        "30 char slider at 75%",
+			value:       0.75,
+			min:         0,
+			max:         1,
+			sliderWidth: 30,
+			wantFilled:  22,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := formatSliderValue(tt.value, tt.min, tt.max, tt.sliderWidth)
+
+			filled := strings.Count(result, "=")
+			if filled != tt.wantFilled {
+				t.Errorf("expected %d filled chars, got %d in: %s", tt.wantFilled, filled, result)
+			}
+
+			bar := strings.Split(result, " ")[0]
+			if len(bar) != tt.sliderWidth {
+				t.Errorf("expected slider width %d, got %d", tt.sliderWidth, len(bar))
+			}
+		})
 	}
 }
