@@ -81,3 +81,24 @@ func formatValue(value, min, max float32) string {
 	}
 	return fmt.Sprintf("%5.2f", value)
 }
+
+func (m Model) renderFooter(width int) string {
+	footerStyle := lipgloss.NewStyle().
+		Foreground(lipgloss.Color("#888888")).
+		Width(width).
+		Padding(0, 1)
+
+	var text string
+	switch m.navigationMode {
+	case modeEffectsList:
+		text = "j/k: navigate | enter: open params | i: grain intensity | 1/2/3: blend mode | q: quit"
+	case modeParameterList:
+		if m.currentSection == "global" {
+			text = "j/k: navigate | pgup/pgdn: reorder | r: reset order | esc: back | q: quit"
+		} else {
+			text = "j/k: navigate | h/l: adjust value | enter: toggle | esc: back | q: quit"
+		}
+	}
+
+	return footerStyle.Render(text)
+}

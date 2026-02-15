@@ -108,3 +108,47 @@ func TestView_ContainsBothPanels(t *testing.T) {
 		t.Error("expected view to contain 'Gain' parameter")
 	}
 }
+
+func TestView_FooterRendering(t *testing.T) {
+	tests := []struct {
+		name            string
+		navigationMode  int
+		currentSection  string
+		expectedContent string
+	}{
+		{
+			name:            "effects list mode",
+			navigationMode:  0, // modeEffectsList
+			currentSection:  "input",
+			expectedContent: "enter: open params",
+		},
+		{
+			name:            "parameter list mode normal section",
+			navigationMode:  1, // modeParameterList
+			currentSection:  "filter",
+			expectedContent: "h/l: adjust value",
+		},
+		{
+			name:            "parameter list mode global section",
+			navigationMode:  1, // modeParameterList
+			currentSection:  "global",
+			expectedContent: "pgup/pgdn: reorder",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := osc.NewClient("127.0.0.1", 57120)
+			model := NewModel(client)
+			model.InitLists(80, 40)
+			model.SetNavigationMode(tt.navigationMode)
+			model.SetCurrentSection(tt.currentSection)
+
+			footer := model.renderFooter(76) // 80 - 4 for app padding
+
+			if !strings.Contains(footer, tt.expectedContent) {
+				t.Errorf("expected footer to contain '%s', got: %s", tt.expectedContent, footer)
+			}
+		})
+	}
+}

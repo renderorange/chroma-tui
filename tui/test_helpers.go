@@ -22,6 +22,16 @@ func (m *Model) SetBlendMode(mode int) {
 	m.setBlendMode(mode)
 }
 
+// SetNavigationMode allows tests to set the navigation mode
+func (m *Model) SetNavigationMode(mode int) {
+	m.navigationMode = navigationMode(mode)
+}
+
+// SetCurrentSection allows tests to set the current section
+func (m *Model) SetCurrentSection(section string) {
+	m.currentSection = section
+}
+
 // TestConstants provides access to control constants for tests
 var (
 	TestCtrlGain                 = ctrlGain
