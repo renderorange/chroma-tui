@@ -9,15 +9,6 @@ import (
 var (
 	appStyle = lipgloss.NewStyle().Padding(1, 2)
 
-	titleStyle = lipgloss.NewStyle().
-			Foreground(lipgloss.Color("#FFFDF5")).
-			Background(lipgloss.Color("#25A065")).
-			Padding(0, 1)
-
-	statusMessageStyle = lipgloss.NewStyle().
-				Foreground(lipgloss.AdaptiveColor{Light: "#04B575", Dark: "#04B575"}).
-				Render
-
 	statusBarStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#888888")).
 			Padding(0, 1)
@@ -35,44 +26,64 @@ var (
 )
 
 func (m Model) View() string {
-	if len(m.effectsList.Items()) == 0 && m.width > 0 {
-		return "Loading..."
+	// Handle tiny terminals
+	if m.width > 0 && (m.width < 60 || m.height < 20) {
+		return appStyle.Render("Terminal too small. Minimum: 60x20")
 	}
 
-	leftView := m.effectsList.View()
-	rightView := m.parameterList.View()
+	// Loading state
+	if m.effectsList.Items() == nil || len(m.effectsList.Items()) == 0 {
+		if m.width > 0 {
+			return "Loading..."
+		}
+		return ""
+	}
 
-	// Apply border styles based on focus
-	var leftPanel, rightPanel string
+	// Determine border styles based on focus
+	var leftBorderStyle, rightBorderStyle lipgloss.Style
 	if m.navigationMode == modeEffectsList {
-		leftPanel = focusedBorderStyle.Render(leftView)
-		rightPanel = unfocusedBorderStyle.Render(rightView)
+		leftBorderStyle = focusedBorderStyle
+		rightBorderStyle = unfocusedBorderStyle
 	} else {
-		leftPanel = unfocusedBorderStyle.Render(leftView)
-		rightPanel = focusedBorderStyle.Render(rightView)
+		leftBorderStyle = unfocusedBorderStyle
+		rightBorderStyle = focusedBorderStyle
 	}
 
+	// Add right margin to left panel for spacing
+	leftBorderStyle = leftBorderStyle.MarginRight(2)
+
+	// Render panels with borders
+	leftPanel := leftBorderStyle.Render(m.effectsList.View())
+	rightPanel := rightBorderStyle.Render(m.parameterList.View())
+
+	// Join panels horizontally
 	panels := lipgloss.JoinHorizontal(lipgloss.Top, leftPanel, rightPanel)
 
-	if !m.showStatus {
-		return appStyle.Render(panels)
+	// Calculate available width (accounting for app padding)
+	availableWidth := m.width - 4
+
+	// Render footer and status bar only if status is enabled
+	var mainContent string
+	if m.showStatus {
+		footer := m.renderFooter(availableWidth)
+		statusBar := m.renderStatusBar(availableWidth)
+
+		mainContent = lipgloss.JoinVertical(
+			lipgloss.Left,
+			panels,
+			footer,
+			statusBar,
+		)
+	} else {
+		footer := m.renderFooter(availableWidth)
+		mainContent = lipgloss.JoinVertical(
+			lipgloss.Left,
+			panels,
+			footer,
+		)
 	}
 
-	connectionStatus := disconnectedStyle.Render("Disconnected")
-	if m.connected {
-		connectionStatus = connectedStyle.Render("Connected")
-	}
-
-	midiStatus := m.midiPort
-	if midiStatus == "" {
-		midiStatus = "No MIDI"
-	}
-
-	statusBar := statusBarStyle.Render(
-		fmt.Sprintf("%s | MIDI: %s", connectionStatus, midiStatus),
-	)
-
-	return appStyle.Render(panels) + "\n" + statusBar
+	return appStyle.Render(mainContent)
 }
 
 func formatValue(value, min, max float32) string {
@@ -101,4 +112,20 @@ func (m Model) renderFooter(width int) string {
 	}
 
 	return footerStyle.Render(text)
+}
+
+func (m Model) renderStatusBar(width int) string {
+	connectionStatus := disconnectedStyle.Render("Disconnected")
+	if m.connected {
+		connectionStatus = connectedStyle.Render("Connected")
+	}
+
+	midiStatus := m.midiPort
+	if midiStatus == "" {
+		midiStatus = "No MIDI"
+	}
+
+	return statusBarStyle.Render(
+		fmt.Sprintf("%s | MIDI: %s", connectionStatus, midiStatus),
+	)
 }

@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/renderorange/chroma/chroma-tui/osc"
 )
 
@@ -150,5 +151,89 @@ func TestView_FooterRendering(t *testing.T) {
 				t.Errorf("expected footer to contain '%s', got: %s", tt.expectedContent, footer)
 			}
 		})
+	}
+}
+
+func TestView_StatusBarRendering(t *testing.T) {
+	tests := []struct {
+		name            string
+		connected       bool
+		midiPort        string
+		expectedContent []string
+	}{
+		{
+			name:            "connected with midi",
+			connected:       true,
+			midiPort:        "USB MIDI Device",
+			expectedContent: []string{"Connected", "MIDI: USB MIDI Device"},
+		},
+		{
+			name:            "disconnected with no midi",
+			connected:       false,
+			midiPort:        "",
+			expectedContent: []string{"Disconnected", "No MIDI"},
+		},
+		{
+			name:            "connected with no midi",
+			connected:       true,
+			midiPort:        "",
+			expectedContent: []string{"Connected", "No MIDI"},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			client := osc.NewClient("127.0.0.1", 57120)
+			model := NewModel(client)
+			model.InitLists(80, 40)
+			model.SetConnected(tt.connected)
+			model.SetMidiPort(tt.midiPort)
+
+			statusBar := model.renderStatusBar(76) // 80 - 4 for app padding
+
+			for _, expected := range tt.expectedContent {
+				if !strings.Contains(statusBar, expected) {
+					t.Errorf("expected status bar to contain '%s', got: %s", expected, statusBar)
+				}
+			}
+		})
+	}
+}
+
+func TestView_VerticalStackingAndAlignment(t *testing.T) {
+	client := osc.NewClient("127.0.0.1", 57122)
+	model := NewModel(client)
+	model.InitLists(80, 40)
+
+	view := model.View()
+
+	// Verify non-empty
+	if len(view) == 0 {
+		t.Error("expected View() to return non-empty string")
+	}
+
+	// Verify footer present
+	if !strings.Contains(view, "j/k: navigate") {
+		t.Error("expected view to contain footer with navigation hints")
+	}
+
+	// Verify status bar present
+	if !strings.Contains(view, "Connected") && !strings.Contains(view, "Disconnected") {
+		t.Error("expected view to contain status bar with connection info")
+	}
+}
+
+func TestView_MinimumTerminalSize(t *testing.T) {
+	client := osc.NewClient("127.0.0.1", 57123)
+	model := NewModel(client)
+
+	// Simulate window size message to set width and height
+	msg := tea.WindowSizeMsg{Width: 50, Height: 15}
+	model.Update(msg)
+
+	view := model.View()
+
+	if !strings.Contains(view, "Terminal too small") {
+		t.Errorf("expected warning for small terminal, got: %s", view)
 	}
 }
