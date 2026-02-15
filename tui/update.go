@@ -17,11 +17,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Initialize lists on first window size
 		if len(m.effectsList.Items()) == 0 {
 			m.InitLists(msg.Width, msg.Height)
+			return m, nil
 		}
-		availableWidth := msg.Width - 4 // subtract app padding (Padding(1,2) = 2 chars each side)
-		leftWidth := availableWidth*3/10 - 2
-		rightWidth := availableWidth - leftWidth - 2
-		listHeight := msg.Height - 6 // subtract app padding (1 top, 1 bottom) + border (1 top, 1 bottom) + status bar (1) + margin (1)
+		leftWidth, rightWidth, listHeight := panelDimensions(msg.Width, msg.Height)
 		m.effectsList.SetSize(leftWidth, listHeight)
 		m.parameterList.SetSize(rightWidth, listHeight)
 		return m, nil

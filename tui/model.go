@@ -173,11 +173,18 @@ func NewModel(client *osc.Client) Model {
 	}
 }
 
+// panelDimensions calculates the width and height for the effects
+// and parameter list panels, accounting for app padding and borders.
+func panelDimensions(width, height int) (leftWidth, rightWidth, listHeight int) {
+	availableWidth := width - 4                 // app padding: Padding(1,2) = 2 chars each side
+	leftWidth = availableWidth*3/10 - 2         // 30% minus border (1 char each side)
+	rightWidth = availableWidth - leftWidth - 2 // remainder minus border
+	listHeight = height - 6                     // app padding (2) + borders (2) + status bar (1) + margin (1)
+	return
+}
+
 func (m *Model) InitLists(width, height int) {
-	availableWidth := width - 4 // subtract app padding (Padding(1,2) = 2 chars each side)
-	leftWidth := availableWidth*3/10 - 2
-	rightWidth := availableWidth - leftWidth - 2
-	listHeight := height - 6 // subtract app padding (1 top, 1 bottom) + border (1 top, 1 bottom) + status bar (1) + margin (1)
+	leftWidth, rightWidth, listHeight := panelDimensions(width, height)
 
 	effectsDelegate := list.NewDefaultDelegate()
 	m.effectsList = list.New(m.buildEffectsList(), effectsDelegate, leftWidth, listHeight)
