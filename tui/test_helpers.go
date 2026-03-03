@@ -32,6 +32,11 @@ func (m *Model) SetCurrentSection(section string) {
 	m.currentSection = section
 }
 
+// SetScreenForTesting allows tests to set the screen state directly
+func (m *Model) SetScreenForTesting(screen int) {
+	m.screen = screenState(screen)
+}
+
 // TestConstants provides access to control constants for tests
 var (
 	TestCtrlGain                 = ctrlGain
@@ -70,3 +75,48 @@ var (
 	TestCtrlBlendMode            = ctrlBlendMode
 	TestCtrlDryWet               = ctrlDryWet
 )
+
+// GetScreenForTesting returns the current screen state for testing
+func (m *Model) GetScreenForTesting() int {
+	return int(m.screen)
+}
+
+// GetEffectsListItems returns the effects list items for testing
+func (m *Model) GetEffectsListItems() []interface{} {
+	items := m.effectsList.Items()
+	result := make([]interface{}, len(items))
+	for i, item := range items {
+		result[i] = item
+	}
+	return result
+}
+
+// GetWidthForTesting returns the model width for testing
+func (m *Model) GetWidthForTesting() int {
+	return m.width
+}
+
+// GetHeightForTesting returns the model height for testing
+func (m *Model) GetHeightForTesting() int {
+	return m.height
+}
+
+// ShowCommandPaletteForTesting sets the command palette visibility for testing
+func (m *Model) ShowCommandPaletteForTesting(show bool) {
+	m.showCommandPalette = show
+}
+
+// SetCommandPaletteTextForTesting sets the command palette text for testing
+func (m *Model) SetCommandPaletteTextForTesting(text string) {
+	m.commandPaletteText = text
+}
+
+// IsCommandPaletteVisibleForTesting returns whether palette is visible for testing
+func (m *Model) IsCommandPaletteVisibleForTesting() bool {
+	return m.showCommandPalette
+}
+
+// GetCommandPaletteTextForTesting returns the palette text for testing
+func (m *Model) GetCommandPaletteTextForTesting() string {
+	return m.commandPaletteText
+}

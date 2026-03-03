@@ -9,8 +9,8 @@ import (
 	"gitlab.com/gomidi/midi/v2/drivers"
 	_ "gitlab.com/gomidi/midi/v2/drivers/rtmididrv"
 
-	"github.com/renderorange/chroma/chroma-tui/config"
-	"github.com/renderorange/chroma/chroma-tui/osc"
+	"github.com/renderorange/chroma/chroma-control/config"
+	"github.com/renderorange/chroma/chroma-control/osc"
 )
 
 type Handler struct {

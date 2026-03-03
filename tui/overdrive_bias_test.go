@@ -1,7 +1,7 @@
 package tui
 
 import (
-	"github.com/renderorange/chroma/chroma-tui/osc"
+	"github.com/renderorange/chroma/chroma-control/osc"
 	"testing"
 )
 

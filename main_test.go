@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/renderorange/chroma/chroma-tui/config"
-	"github.com/renderorange/chroma/chroma-tui/midi"
-	"github.com/renderorange/chroma/chroma-tui/osc"
-	"github.com/renderorange/chroma/chroma-tui/tui"
+	"github.com/renderorange/chroma/chroma-control/config"
+	"github.com/renderorange/chroma/chroma-control/midi"
+	"github.com/renderorange/chroma/chroma-control/osc"
+	"github.com/renderorange/chroma/chroma-control/tui"
 )
 
 func TestMain_FlagParsingSetsDefaultValues(t *testing.T) {
@@ -18,7 +18,7 @@ func TestMain_FlagParsingSetsDefaultValues(t *testing.T) {
 	defer func() { os.Args = oldArgs }()
 
 	// Test default flags
-	os.Args = []string{"chroma-tui"}
+	os.Args = []string{"chroma-control"}
 
 	// Reset flag set for clean test
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)
@@ -51,7 +51,7 @@ func TestMain_FlagParsingWithCustomValues(t *testing.T) {
 	defer func() { os.Args = oldArgs }()
 
 	// Test custom flags
-	os.Args = []string{"chroma-tui", "-host", "192.168.1.100", "-port", "57130", "-listen", "9010", "-no-midi"}
+	os.Args = []string{"chroma-control", "-host", "192.168.1.100", "-port", "57130", "-listen", "9010", "-no-midi"}
 
 	// Reset flag set for clean test
 	flag.CommandLine = flag.NewFlagSet(os.Args[0], flag.ExitOnError)

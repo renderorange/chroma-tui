@@ -5,12 +5,13 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/renderorange/chroma/chroma-tui/osc"
+	"github.com/renderorange/chroma/chroma-control/osc"
 )
 
 func TestView_RenderingWithDefaultModel(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	view := model.View()
@@ -33,6 +34,7 @@ func TestView_RenderingWithDefaultModel(t *testing.T) {
 func TestView_RenderingWithFocusedControl(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	view := model.View()
@@ -47,6 +49,7 @@ func TestView_RenderingWithDifferentWidths(t *testing.T) {
 	testWidths := []int{80, 120, 200}
 	for _, width := range testWidths {
 		model := NewModel(client)
+		model.SetScreenForTesting(int(screenMain))
 		model.InitLists(width, 40)
 
 		view := model.View()
@@ -59,6 +62,7 @@ func TestView_RenderingWithDifferentWidths(t *testing.T) {
 func TestView_RenderingWithMIDIPort(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.SetMidiPort("MIDI In")
 	model.InitLists(80, 40)
 
@@ -71,6 +75,7 @@ func TestView_RenderingWithMIDIPort(t *testing.T) {
 func TestView_RenderingWithEffectsOrder(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	view := model.View()
@@ -82,6 +87,7 @@ func TestView_RenderingWithEffectsOrder(t *testing.T) {
 func TestView_RenderingWithParameterValues(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.Gain = 0.75
 	model.FilterCutoff = 4000
 	model.InitLists(80, 40)
@@ -95,14 +101,10 @@ func TestView_RenderingWithParameterValues(t *testing.T) {
 func TestView_ContainsBothPanels(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(100, 40)
 
 	view := model.View()
-
-	// View should contain effects list title
-	if !strings.Contains(view, "Effects") {
-		t.Error("expected view to contain 'Effects' title")
-	}
 
 	// View should contain parameter content (Input is default section)
 	if !strings.Contains(view, "Gain") {
@@ -121,19 +123,13 @@ func TestView_FooterRendering(t *testing.T) {
 			name:            "effects list mode",
 			navigationMode:  0, // modeEffectsList
 			currentSection:  "input",
-			expectedContent: "enter: open params",
+			expectedContent: "enter:params",
 		},
 		{
 			name:            "parameter list mode normal section",
 			navigationMode:  1, // modeParameterList
 			currentSection:  "filter",
-			expectedContent: "h/l: adjust value",
-		},
-		{
-			name:            "parameter list mode global section",
-			navigationMode:  1, // modeParameterList
-			currentSection:  "global",
-			expectedContent: "pgup/pgdn: reorder",
+			expectedContent: "h/l:adjust",
 		},
 	}
 
@@ -141,6 +137,7 @@ func TestView_FooterRendering(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client := osc.NewClient("127.0.0.1", 57120)
 			model := NewModel(client)
+			model.SetScreenForTesting(int(screenMain))
 			model.InitLists(80, 40)
 			model.SetNavigationMode(tt.navigationMode)
 			model.SetCurrentSection(tt.currentSection)
@@ -165,7 +162,7 @@ func TestView_StatusBarRendering(t *testing.T) {
 			name:            "connected with midi",
 			connected:       true,
 			midiPort:        "USB MIDI Device",
-			expectedContent: []string{"Connected", "MIDI: USB MIDI Device"},
+			expectedContent: []string{"Connected", "USB MIDI Device"},
 		},
 		{
 			name:            "disconnected with no midi",
@@ -185,6 +182,7 @@ func TestView_StatusBarRendering(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			client := osc.NewClient("127.0.0.1", 57120)
 			model := NewModel(client)
+			model.SetScreenForTesting(int(screenMain))
 			model.InitLists(80, 40)
 			model.SetConnected(tt.connected)
 			model.SetMidiPort(tt.midiPort)
@@ -203,6 +201,7 @@ func TestView_StatusBarRendering(t *testing.T) {
 func TestView_VerticalStackingAndAlignment(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57122)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	view := model.View()
@@ -213,7 +212,7 @@ func TestView_VerticalStackingAndAlignment(t *testing.T) {
 	}
 
 	// Verify footer present
-	if !strings.Contains(view, "j/k: navigate") {
+	if !strings.Contains(view, "j/k:nav") {
 		t.Error("expected view to contain footer with navigation hints")
 	}
 
@@ -226,6 +225,7 @@ func TestView_VerticalStackingAndAlignment(t *testing.T) {
 func TestView_MinimumTerminalSize(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57123)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 
 	// Simulate window size message to set width and height
 	msg := tea.WindowSizeMsg{Width: 50, Height: 15}

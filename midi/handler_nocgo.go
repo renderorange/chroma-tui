@@ -5,8 +5,8 @@ package midi
 import (
 	"fmt"
 
-	"github.com/renderorange/chroma/chroma-tui/config"
-	"github.com/renderorange/chroma/chroma-tui/osc"
+	"github.com/renderorange/chroma/chroma-control/config"
+	"github.com/renderorange/chroma/chroma-control/osc"
 )
 
 type Handler struct {

@@ -43,31 +43,35 @@ func (i parameterItem) Description() string {
 }
 func (i parameterItem) FilterValue() string { return i.title }
 
-func newEffectItem(id, title string, enabled bool) effectItem {
-	status := "[DISABLED]"
-	if enabled {
-		status = "[ENABLED]"
+func newEffectItem(id, title string, enabled bool, showStatus bool) effectItem {
+	description := ""
+	if showStatus {
+		if enabled {
+			description = "[ENABLED]"
+		} else {
+			description = "[DISABLED]"
+		}
 	}
 	return effectItem{
 		id:          id,
 		title:       title,
-		description: status,
+		description: description,
 		enabled:     enabled,
 	}
 }
 
 func newParameterItem(id, title string, value, min, max float32, ctrl control, isToggle, isActive bool, sliderWidth int) parameterItem {
-	prefix := "   "
+	prefix := ""
 	if isToggle {
 		if isActive {
-			prefix = "[X]"
+			prefix = "[X] "
 		} else {
-			prefix = "[ ]"
+			prefix = "[ ] "
 		}
 	}
 	return parameterItem{
 		id:          id,
-		title:       prefix + " " + title,
+		title:       prefix + title,
 		value:       value,
 		min:         min,
 		max:         max,
@@ -81,7 +85,7 @@ func newParameterItem(id, title string, value, min, max float32, ctrl control, i
 func newParameterItemWithDesc(id, title string, customDesc string, ctrl control, sliderWidth int) parameterItem {
 	return parameterItem{
 		id:                id,
-		title:             "   " + title,
+		title:             title,
 		customDescription: customDesc,
 		ctrl:              ctrl,
 		sliderWidth:       sliderWidth,
@@ -90,14 +94,13 @@ func newParameterItemWithDesc(id, title string, customDesc string, ctrl control,
 
 func (m *Model) buildEffectsList() []list.Item {
 	items := []list.Item{
-		newEffectItem("input", "Input", m.InputFrozen),
-		newEffectItem("filter", "Filter", m.FilterEnabled),
-		newEffectItem("overdrive", "Overdrive", m.OverdriveEnabled),
-		newEffectItem("bitcrush", "Bitcrush", m.BitcrushEnabled),
-		newEffectItem("granular", "Granular", m.GranularEnabled),
-		newEffectItem("reverb", "Reverb", m.ReverbEnabled),
-		newEffectItem("delay", "Delay", m.DelayEnabled),
-		newEffectItem("global", "Global", true),
+		newEffectItem("master", "Master", m.MasterEnabled, true),
+		newEffectItem("filter", "Filter", m.FilterEnabled, true),
+		newEffectItem("overdrive", "Overdrive", m.OverdriveEnabled, true),
+		newEffectItem("bitcrush", "Bitcrush", m.BitcrushEnabled, true),
+		newEffectItem("granular", "Granular", m.GranularEnabled, true),
+		newEffectItem("reverb", "Reverb", m.ReverbEnabled, true),
+		newEffectItem("delay", "Delay", m.DelayEnabled, true),
 	}
 	return items
 }
@@ -106,11 +109,15 @@ func (m *Model) buildParameterList(section string) []list.Item {
 	var items []list.Item
 
 	switch section {
-	case "input":
+	case "master":
 		items = []list.Item{
+			newParameterItem("masterEnabled", "Master", 0, 0, 0, ctrlMasterEnabled, true, m.MasterEnabled, m.sliderWidth),
 			newParameterItem("gain", "Gain", m.Gain, 0, 2, ctrlGain, false, false, m.sliderWidth),
 			newParameterItem("freezeLength", "Loop Length", m.InputFreezeLength, 0.05, 0.5, ctrlInputFreezeLen, false, false, m.sliderWidth),
 			newParameterItem("freeze", "Input Freeze", 0, 0, 0, ctrlInputFreeze, true, m.InputFrozen, m.sliderWidth),
+			newParameterItemWithDesc("blendMode", "Blend Mode", m.formatBlendMode(), ctrlBlendMode, m.sliderWidth),
+			newParameterItem("dryWet", "Dry/Wet", m.DryWet, 0, 1, ctrlDryWet, false, false, m.sliderWidth),
+			newParameterItemWithDesc("effectsOrder", "Effects Order", m.formatEffectsOrder(), ctrlEffectsOrder, m.sliderWidth),
 		}
 	case "filter":
 		items = []list.Item{
@@ -144,7 +151,7 @@ func (m *Model) buildParameterList(section string) []list.Item {
 			newParameterItem("posScat", "Position Scatter", m.GranularPosScatter, 0, 1, ctrlGranularPosScatter, false, false, m.sliderWidth),
 			newParameterItem("mix", "Mix", m.GranularMix, 0, 1, ctrlGranularMix, false, false, m.sliderWidth),
 			newParameterItem("freeze", "Grain Freeze", 0, 0, 0, ctrlGranularFreeze, true, m.GranularFrozen, m.sliderWidth),
-			newParameterItemWithDesc("intensity", "Intensity", "Current: "+m.GrainIntensity, ctrlGrainIntensity, m.sliderWidth),
+			newParameterItemWithDesc("intensity", "Intensity", m.formatGrainIntensity(), ctrlGrainIntensity, m.sliderWidth),
 		}
 	case "reverb":
 		items = []list.Item{
@@ -160,13 +167,6 @@ func (m *Model) buildParameterList(section string) []list.Item {
 			newParameterItem("modRate", "Mod Rate", m.ModRate, 0.1, 10, ctrlModRate, false, false, m.sliderWidth),
 			newParameterItem("modDepth", "Mod Depth", m.ModDepth, 0, 1, ctrlModDepth, false, false, m.sliderWidth),
 			newParameterItem("mix", "Mix", m.DelayMix, 0, 1, ctrlDelayMix, false, false, m.sliderWidth),
-		}
-	case "global":
-		modeNames := []string{"MIRROR", "COMPLEMENT", "TRANSFORM"}
-		items = []list.Item{
-			newParameterItemWithDesc("blendMode", "Blend Mode", "Current: "+modeNames[m.BlendMode], ctrlBlendMode, m.sliderWidth),
-			newParameterItem("dryWet", "Dry/Wet", m.DryWet, 0, 1, ctrlDryWet, false, false, m.sliderWidth),
-			newParameterItemWithDesc("effectsOrder", "Effects Order", m.formatEffectsOrder(), ctrlEffectsOrder, m.sliderWidth),
 		}
 	}
 
@@ -211,7 +211,54 @@ func (m *Model) formatSliderValue(label string, value, min, max float32) string 
 func (m *Model) formatEffectsOrder() string {
 	var parts []string
 	for i, effect := range m.EffectsOrder {
-		parts = append(parts, fmt.Sprintf("%d.%s", i+1, effect))
+		if m.effectsOrderEditMode && i == m.selectedEffectIndex {
+			if m.effectGrabbed {
+				// Use double brackets when grabbed
+				parts = append(parts, fmt.Sprintf("[[%s]]", effect))
+			} else {
+				// Use single brackets when just selected
+				parts = append(parts, fmt.Sprintf("[%s]", effect))
+			}
+		} else {
+			parts = append(parts, effect)
+		}
+	}
+
+	result := strings.Join(parts, " → ")
+
+	if m.effectsOrderEditMode {
+		if m.effectGrabbed {
+			result += "\nh/l: move · esc: ungrab"
+		} else {
+			result += "\nh/l: select · enter: grab · esc: done"
+		}
+	}
+
+	return result
+}
+
+func (m *Model) formatGrainIntensity() string {
+	options := []string{"subtle", "pronounced", "extreme"}
+	var parts []string
+	for _, opt := range options {
+		if opt == m.GrainIntensity {
+			parts = append(parts, fmt.Sprintf("[%s]", opt))
+		} else {
+			parts = append(parts, opt)
+		}
+	}
+	return strings.Join(parts, " ")
+}
+
+func (m *Model) formatBlendMode() string {
+	options := []string{"mirror", "complement", "transform"}
+	var parts []string
+	for i, opt := range options {
+		if i == m.BlendMode {
+			parts = append(parts, fmt.Sprintf("[%s]", opt))
+		} else {
+			parts = append(parts, opt)
+		}
 	}
 	return strings.Join(parts, " ")
 }

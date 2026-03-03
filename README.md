@@ -1,4 +1,4 @@
-# Chroma TUI
+# Chroma Control
 
 Terminal-based interface for Chroma audio effects system.
 
@@ -29,18 +29,15 @@ This repository contains the Go-based terminal user interface (TUI) component of
 The TUI provides real-time effects chain reordering:
 
 #### Controls
-- **Navigation**: Tab/↑/↓/j/k to select effect or parameter
+- **Navigation**: Enter/↑/↓/j/k to select effect or parameter
 - **Panel Switching**: Enter to open parameter panel, Esc to return to effects list
-- **Reordering**: PageUp to move effect up, PageDown to move down
-- **Reset**: 'r' key to restore default order
-- **Persistence**: Order saved and restored across sessions
 
 #### OSC Integration
 Effects order changes are transmitted via `/chroma/effectsOrder` endpoint.
 
 #### Default Processing Order
 ```
-Input → Filter → Overdrive → Bitcrusher → Granular → Reverb → Delay → Output
+Master (Input) → Filter → Overdrive → Bitcrusher → Granular → Reverb → Delay → Output
 ```
 
 ## External Dependency
@@ -53,7 +50,7 @@ The TUI will connect to the running Chroma engine via OSC protocol (localhost:57
 
 ## Architecture
 
-Chroma-TUI communicates with Chroma via **stateless OSC over UDP**. This means:
+Chroma Control communicates with Chroma via **stateless OSC over UDP**. This means:
 
 - The TUI sends control messages to Chroma (fire-and-forget)
 - Chroma processes audio independently and maintains its own state
@@ -67,15 +64,18 @@ This design provides low latency and simplicity but means the TUI does not recei
 ## Quick Start
 
 ```bash
+# Install dependencies
+apt update && apt install supercollider libasound2-dev
+
 # Clone this repository
-git clone https://github.com/renderorange/chroma-tui.git
-cd chroma-tui
+git clone https://github.com/renderorange/chroma-control.git
+cd chroma-control
 
 # Build
-go build -o chroma-tui
+go build -o chroma-control
 
 # Run (requires Chroma SuperCollider engine running)
-./chroma-tui
+./chroma-control
 ```
 
 ## Requirements
@@ -84,29 +84,13 @@ go build -o chroma-tui
 - **Go 1.24+**: For building the TUI
 - **Terminal**: With proper Unicode and color support (minimum 60x20 size)
 - **Chroma SuperCollider**: External audio engine (required)
+- **libasound2-dev**: alsa dev
 
 ## Controls
 
-### Keyboard Navigation
-| Navigation | Action |
-|------------|--------|
-| `Tab`, `↓`, `j` | Next parameter/effect |
-| `Shift+Tab`, `↑`, `k` | Previous parameter/effect |
-| `Enter` | Open parameter panel (from effects list) |
-| `Esc` | Return to effects list (from parameters) |
-| `←`, `h` | Decrease parameter value |
-| `→`, `l` | Increase parameter value |
-| `Space` | Toggle boolean parameters |
+### Keybindings
 
-### Special Controls
-| Key | Action |
-|-----|--------|
-| `i` | Cycle grain intensity (subtle → pronounced → extreme) |
-| `1`, `2`, `3` | Set blend mode (Mirror, Complement, Transform) |
-| `PageUp` | Move selected effect up in chain (global section) |
-| `PageDown` | Move selected effect down in chain (global section) |
-| `r` | Reset effects order to default (global section) |
-| `q`, `Ctrl+C` | Quit application |
+See [docs/KEYBINDINGS.md](docs/KEYBINDINGS.md).
 
 ### Parameter Reference
 
@@ -177,24 +161,7 @@ go build -o chroma-tui
 |-----------|-------|---------|---------|
 | Blend Mode | Mirror/Complement/Transform | Mirror | Three-state |
 | Dry/Wet | 0.0 - 1.0 | 0.5 | Linear |
-| Effects Order | Customizable | filter→overdrive→bitcrush→granular→reverb→delay | Reorderable (PageUp/PageDown) |
-
-### Special Parameter Behaviors
-
-#### Logarithmic Scaling
-- **Granular Density**: 1-50 grains (logarithmic)
-- **Granular Size**: 0.01-0.5s (logarithmic)
-- **Modulation Rate**: 0.1-5.0 Hz (logarithmic)
-- **Modulation Depth**: 0.0-1.0 (logarithmic)
-
-#### Three-State Values
-- **GrainIntensity**: Cycle with `i` key → subtle → pronounced → extreme → subtle
-- **BlendMode**: `1`/`2`/`3` keys or MIDI notes → Mirror (0) → Complement (1) → Transform (2)
-
-#### Dynamic Interface
-- **Slider Width**: Automatically scales based on terminal width (minimum 10 characters)
-- **Panel Ratio**: 25/75 split between effects list and parameters
-- **Context Footer**: Shows relevant keybindings for current mode (effects list, parameters, or global section)
+| Effects Order | Customizable | filter→overdrive→bitcrush→granular→reverb→delay | Reorderable |
 
 ### MIDI Integration
 
@@ -278,10 +245,10 @@ All parameters are available via individual OSC endpoints. Examples:
 
 ### Building from Source
 ```bash
-git clone https://github.com/renderorange/chroma-tui.git
-cd chroma-tui
+git clone https://github.com/renderorange/chroma-control.git
+cd chroma-control
 go mod tidy
-go build -o chroma-tui
+go build -o chroma-control
 ```
 
 ### Running Tests
@@ -294,13 +261,13 @@ go test -cover ./...
 ### Cross-Platform Builds
 ```bash
 # Linux
-GOOS=linux GOARCH=amd64 go build -o chroma-tui-linux
+GOOS=linux GOARCH=amd64 go build -o chroma-control-linux
 
 # macOS  
-GOOS=darwin GOARCH=amd64 go build -o chroma-tui-macos
+GOOS=darwin GOARCH=amd64 go build -o chroma-control-macos
 
 # Windows
-GOOS=windows GOARCH=amd64 go build -o chroma-tui.exe
+GOOS=windows GOARCH=amd64 go build -o chroma-control.exe
 ```
 
 ## Architecture
@@ -359,11 +326,8 @@ Solution:
 - Test OSC messages manually with oscsend utility
 
 **Effects Reordering Not Working**
-- Ensure you're in the global section (navigate to Effects Order in parameter list)
-- Use PageUp/PageDown for reordering (arrow keys navigate the list)
 - Press Enter from effects list to access parameter panel
 - Check OSC connection for order synchronization
-- Reset with 'r' key if order becomes corrupted
 
 ### Performance Issues
 
@@ -371,14 +335,7 @@ Solution:
 - Reduce granular density or size parameters
 - Disable unused effects in chain
 - Check for MIDI controller spam (stuck CC)
-- Monitor with: top -p $(pgrep chroma-tui)
-
-**UI Responsiveness**
-- Pending changes system prevents OSC overwrites during active adjustment
-- Parameters return to normal sync after 500ms of inactivity
-- Check network latency for OSC communication
-- Focused panel shows green border, unfocused shows gray border
-- Footer updates dynamically based on current navigation mode
+- Monitor with: top -p $(pgrep chroma-control)
 
 ### System Verification
 
@@ -386,7 +343,7 @@ Test TUI functionality:
 
 ```bash
 # Test build
-go build -o chroma-tui
+go build -o chroma-control
 
 # Test OSC communication (requires engine running)
 echo "Sending test OSC message..." && \
@@ -397,13 +354,6 @@ go test ./config -v
 
 # Test all components
 go test ./... -v
-```
-
-### Debug Information
-
-Enable debug logging:
-```bash
-CHROMA_DEBUG=1 ./chroma-tui
 ```
 
 ### Compatibility

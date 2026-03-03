@@ -4,12 +4,13 @@ import (
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/renderorange/chroma/chroma-tui/osc"
+	"github.com/renderorange/chroma/chroma-control/osc"
 )
 
 func TestUpdate_KeyboardNavigation(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	// Test Enter key - should enter filter section
@@ -34,6 +35,7 @@ func TestUpdate_KeyboardNavigation(t *testing.T) {
 func TestUpdate_ParameterAdjustment(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	// Enter filter section
@@ -56,6 +58,7 @@ func TestUpdate_ParameterAdjustment(t *testing.T) {
 func TestUpdate_ToggleControls(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	// Test toggle visibility keys
@@ -100,6 +103,7 @@ func TestUpdate_ToggleControls(t *testing.T) {
 func TestUpdate_ListNavigationDelegation(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	// Effects list should start at index 0
@@ -120,6 +124,7 @@ func TestUpdate_ListNavigationDelegation(t *testing.T) {
 func TestUpdate_ParameterPanelSyncsWithEffectSelection(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	// Start at index 0 (input), move down to index 1 (filter)
@@ -142,6 +147,7 @@ func TestUpdate_ParameterPanelSyncsWithEffectSelection(t *testing.T) {
 func TestUpdate_FullSideBySideWorkflow(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(120, 40)
 
 	// 1. Navigate down to "filter" in effects list
@@ -195,6 +201,7 @@ func TestUpdate_FullSideBySideWorkflow(t *testing.T) {
 func TestUpdate_Quit(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")}

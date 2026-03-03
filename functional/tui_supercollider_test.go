@@ -3,8 +3,8 @@ package functional
 import (
 	"testing"
 
-	"github.com/renderorange/chroma/chroma-tui/osc"
-	"github.com/renderorange/chroma/chroma-tui/tui"
+	"github.com/renderorange/chroma/chroma-control/osc"
+	"github.com/renderorange/chroma/chroma-control/tui"
 )
 
 func TestTUISuperCollider_FireAndForget(t *testing.T) {

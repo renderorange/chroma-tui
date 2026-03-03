@@ -101,6 +101,9 @@ func (c *Client) SetOverdriveMix(v float32) error   { return c.SendFloat("/chrom
 func (c *Client) SetGranularEnabled(v bool) error {
 	return c.SendInt("/chroma/granularEnabled", boolToInt(v))
 }
+func (c *Client) SetMasterEnabled(v bool) error {
+	return c.SendInt("/chroma/masterEnabled", boolToInt(v))
+}
 func (c *Client) SetBlendMode(v int) error  { return c.SendInt("/chroma/blendMode", int32(v)) }
 func (c *Client) SetDryWet(v float32) error { return c.SendFloat("/chroma/dryWet", v) }
 

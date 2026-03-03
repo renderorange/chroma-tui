@@ -84,3 +84,55 @@ func Save(cfg Config, path string) error {
 
 	return toml.NewEncoder(file).Encode(cfg)
 }
+
+// Settings holds TUI-specific configuration.
+type Settings struct {
+}
+
+// DefaultSettings returns default TUI settings.
+func DefaultSettings() Settings {
+	return Settings{}
+}
+
+// LoadSettings loads TUI settings from the config directory.
+func LoadSettings() Settings {
+	settings := DefaultSettings()
+
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return settings
+	}
+
+	settingsPath := filepath.Join(configDir, "chroma-control", "settings.toml")
+	if _, err := os.Stat(settingsPath); os.IsNotExist(err) {
+		return settings
+	}
+
+	if _, err := toml.DecodeFile(settingsPath, &settings); err != nil {
+		return DefaultSettings()
+	}
+
+	return settings
+}
+
+// SaveSettings saves TUI settings to the config directory.
+func SaveSettings(settings Settings) error {
+	configDir, err := os.UserConfigDir()
+	if err != nil {
+		return err
+	}
+
+	dir := filepath.Join(configDir, "chroma-control")
+	if err := os.MkdirAll(dir, 0755); err != nil {
+		return err
+	}
+
+	settingsPath := filepath.Join(dir, "settings.toml")
+	file, err := os.Create(settingsPath)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	return toml.NewEncoder(file).Encode(settings)
+}

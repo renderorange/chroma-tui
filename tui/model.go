@@ -2,7 +2,21 @@ package tui
 
 import (
 	"github.com/charmbracelet/bubbles/list"
-	"github.com/renderorange/chroma/chroma-tui/osc"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/renderorange/chroma/chroma-control/config"
+	"github.com/renderorange/chroma/chroma-control/osc"
+)
+
+var (
+	colorPrimary       = lipgloss.Color("#888888")
+	colorSecondary     = lipgloss.Color("#666666")
+	colorAccent        = lipgloss.Color("#AAAAAA")
+	colorBackground    = lipgloss.Color("#000000")
+	colorTextNormal    = lipgloss.Color("#CCCCCC")
+	colorTextMuted     = lipgloss.Color("#444444")
+	colorTextHighlight = lipgloss.Color("#FFFFFF")
+	colorTextSuccess   = lipgloss.Color("#888888")
+	colorTextError     = lipgloss.Color("#AAAAAA")
 )
 
 type control int
@@ -14,8 +28,18 @@ const (
 	modeParameterList
 )
 
+type screenState int
+
 const (
-	ctrlGain control = iota
+	screenSplash screenState = iota
+	screenMain
+	screenSettings
+	screenHelp
+)
+
+const (
+	ctrlMasterEnabled control = iota
+	ctrlGain
 	ctrlInputFreezeLen
 	ctrlInputFreeze
 	ctrlFilterEnabled
@@ -59,6 +83,7 @@ const (
 
 type Model struct {
 	// State
+	MasterEnabled        bool
 	Gain                 float32
 	InputFrozen          bool
 	InputFreezeLength    float32
@@ -98,13 +123,15 @@ type Model struct {
 	EffectsOrder         []string // Current effects processing order
 
 	// UI state
-	focused             control
-	selectedEffectIndex int // Index of currently selected effect for reordering
-	connected           bool
-	midiPort            string
-	width               int
-	height              int
-	sliderWidth         int
+	focused              control
+	selectedEffectIndex  int  // Index of currently selected effect for reordering
+	effectsOrderEditMode bool // Whether we're in effects reorder mode
+	effectGrabbed        bool // Whether the selected effect is grabbed for moving
+	connected            bool
+	midiPort             string
+	width                int
+	height               int
+	sliderWidth          int
 
 	// Navigation state for list-based UI
 	navigationMode navigationMode
@@ -118,11 +145,26 @@ type Model struct {
 
 	// OSC
 	client *osc.Client
+
+	// Version
+	version string
+
+	// Screen state
+	screen     screenState
+	prevScreen screenState
+
+	settings config.Settings
+
+	// UI overlays
+	showCommandPalette bool
+	commandPaletteText string
+	showHelpPanel      bool
 }
 
 func NewModel(client *osc.Client) Model {
-	return Model{
+	m := Model{
 		// Defaults matching Chroma.sc
+		MasterEnabled:        true,
 		Gain:                 1.0,
 		InputFreezeLength:    0.1,
 		FilterEnabled:        true,
@@ -166,31 +208,55 @@ func NewModel(client *osc.Client) Model {
 		connected:           false,
 		client:              client,
 		navigationMode:      modeEffectsList,
-		currentSection:      "input",
+		currentSection:      "master",
 		showHelp:            false,
 		showStatus:          true,
 		showPagination:      true,
 		showTitle:           true,
 		sliderWidth:         10, // default, will be recalculated on resize
 	}
+
+	// Load settings
+	settings := config.LoadSettings()
+	m.settings = settings
+
+	// Start on splash screen
+	m.screen = screenSplash
+	m.prevScreen = screenSplash
+
+	return m
+}
+
+// SetVersion sets the application version for display.
+func (m *Model) SetVersion(v string) {
+	m.version = v
+}
+
+// switchScreen changes the current screen, saving the previous one.
+func (m *Model) switchScreen(s screenState) {
+	m.prevScreen = m.screen
+	m.screen = s
+}
+
+// goBack returns to the previous screen.
+func (m *Model) goBack() {
+	m.screen = m.prevScreen
 }
 
 // panelDimensions calculates the width and height for the effects
-// and parameter list panels, accounting for app padding and borders.
+// and parameter list panels, accounting for app padding.
 func panelDimensions(width, height int) (leftWidth, rightWidth, listHeight int) {
-	// Minimum terminal size guards
 	if width < 60 || height < 20 {
 		return 10, 10, 10
 	}
 
-	availableWidth := width - 4 // app padding: Padding(1,2) = 2 chars each side
-	gap := 2                    // spacing between panels
+	availableWidth := width - 6 // app padding: Padding(2,3) = 4 chars + divider (1 char)
 
-	// 25% for left panel, 75% for right panel
-	leftWidth = availableWidth/4 - 2                  // minus border (1 char each side)
-	rightWidth = availableWidth - leftWidth - 4 - gap // minus borders and gap
+	// Left panel fixed at 20 chars, right panel takes remaining width
+	leftWidth = 20
+	rightWidth = availableWidth - leftWidth
 
-	// Height calculation: app padding (2) + borders (2) + footer (1) + status bar (1)
+	// Height calculation: app padding (4) + footer (1) + status bar (1)
 	listHeight = height - 6
 
 	// Ensure non-negative dimensions
@@ -212,18 +278,17 @@ func (m *Model) InitLists(width, height int) {
 
 	effectsDelegate := list.NewDefaultDelegate()
 	m.effectsList = list.New(m.buildEffectsList(), effectsDelegate, leftWidth, listHeight)
-	m.effectsList.Title = "Effects"
+	m.effectsList.SetShowTitle(false)
 	m.effectsList.SetShowHelp(m.showHelp)
-	m.effectsList.SetShowStatusBar(m.showStatus)
+	m.effectsList.SetShowStatusBar(false)
 	m.effectsList.SetShowPagination(m.showPagination)
-	m.effectsList.SetShowTitle(m.showTitle)
 
 	parameterDelegate := list.NewDefaultDelegate()
 	m.parameterList = list.New(nil, parameterDelegate, rightWidth, listHeight)
+	m.parameterList.SetShowTitle(false)
 	m.parameterList.SetShowHelp(m.showHelp)
-	m.parameterList.SetShowStatusBar(m.showStatus)
+	m.parameterList.SetShowStatusBar(false)
 	m.parameterList.SetShowPagination(m.showPagination)
-	m.parameterList.SetShowTitle(m.showTitle)
 
 	// Initialize parameter list with first effect's parameters
 	m.syncParameterPanel()
@@ -232,13 +297,16 @@ func (m *Model) InitLists(width, height int) {
 func (m *Model) refreshParameterList() {
 	_, rightWidth, _ := panelDimensions(m.width, m.height)
 
-	// Calculate slider width: panel width - max title - value width - padding
 	m.sliderWidth = rightWidth - 24 - 9 - 4
 	if m.sliderWidth < 10 {
 		m.sliderWidth = 10
 	}
 
 	m.parameterList.SetItems(m.buildParameterList(m.currentSection))
+}
+
+func (m *Model) refreshEffectsList() {
+	m.effectsList.SetItems(m.buildEffectsList())
 }
 
 func (m *Model) NextControl() {
@@ -273,7 +341,7 @@ func (m *Model) SetEffectsOrder(order []string) {
 
 func (m *Model) GetEffectsOrder() []string {
 	if len(m.EffectsOrder) == 0 {
-		// Set default order
+		// Set default order (master always comes first, not included in reorderable list)
 		m.EffectsOrder = []string{
 			"filter", "overdrive", "bitcrush",
 			"granular", "reverb", "delay",
@@ -289,7 +357,6 @@ func (m *Model) syncParameterPanel() {
 		if eff, ok := items[idx].(effectItem); ok {
 			if m.currentSection != eff.id || len(m.parameterList.Items()) == 0 {
 				m.currentSection = eff.id
-				m.parameterList.Title = eff.title
 				m.refreshParameterList()
 			}
 		}

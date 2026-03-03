@@ -6,7 +6,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/renderorange/chroma/chroma-tui/osc"
+	"github.com/renderorange/chroma/chroma-control/osc"
 )
 
 func TestLists_effectItem(t *testing.T) {
@@ -50,7 +50,7 @@ func TestLists_parameterItem(t *testing.T) {
 }
 
 func TestLists_newEffectItem(t *testing.T) {
-	item := newEffectItem("filter", "Filter", true)
+	item := newEffectItem("filter", "Filter", true, true)
 	if item.id != "filter" {
 		t.Errorf("expected id 'filter', got %s", item.id)
 	}
@@ -61,7 +61,7 @@ func TestLists_newEffectItem(t *testing.T) {
 		t.Error("expected enabled to be true")
 	}
 
-	itemDisabled := newEffectItem("delay", "Delay", false)
+	itemDisabled := newEffectItem("delay", "Delay", false, true)
 	if itemDisabled.enabled {
 		t.Error("expected enabled to be false")
 	}
@@ -91,11 +91,12 @@ func TestLists_newParameterItem(t *testing.T) {
 func TestLists_buildEffectsList(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	items := model.buildEffectsList()
-	if len(items) != 8 {
-		t.Errorf("expected 8 effect items, got %d", len(items))
+	if len(items) != 7 {
+		t.Errorf("expected 7 effect items, got %d", len(items))
 	}
 
 	found := false
@@ -117,20 +118,20 @@ func TestLists_buildEffectsList(t *testing.T) {
 func TestLists_buildParameterList(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	tests := []struct {
 		section   string
 		wantCount int
 	}{
-		{"input", 3},
+		{"master", 7},
 		{"filter", 4},
 		{"overdrive", 5},
 		{"bitcrush", 5},
 		{"granular", 8},
 		{"reverb", 3},
 		{"delay", 6},
-		{"global", 3},
 	}
 
 	for _, tt := range tests {
@@ -146,6 +147,7 @@ func TestLists_buildParameterList(t *testing.T) {
 func TestLists_formatSliderValue(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 
 	result := model.formatSliderValue("Gain", 0.5, 0, 2)
 	if len(result) == 0 {
@@ -156,6 +158,7 @@ func TestLists_formatSliderValue(t *testing.T) {
 func TestLists_formatEffectsOrder(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.EffectsOrder = []string{"filter", "overdrive", "granular"}
 
 	result := model.formatEffectsOrder()
@@ -167,6 +170,7 @@ func TestLists_formatEffectsOrder(t *testing.T) {
 func TestModel_NextControl(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	initial := model.focused
@@ -179,6 +183,7 @@ func TestModel_NextControl(t *testing.T) {
 func TestModel_PrevControl(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	model.focused = 5
@@ -192,6 +197,7 @@ func TestModel_PrevControl(t *testing.T) {
 func TestModel_Focused(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.focused = ctrlGain
 
 	if model.Focused() != ctrlGain {
@@ -202,6 +208,7 @@ func TestModel_Focused(t *testing.T) {
 func TestModel_IsConnected(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 
 	if model.IsConnected() != false {
 		t.Error("expected IsConnected() to return false initially")
@@ -211,6 +218,7 @@ func TestModel_IsConnected(t *testing.T) {
 func TestModel_SetEffectsOrder(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	newOrder := []string{"reverb", "delay", "filter"}
@@ -224,6 +232,7 @@ func TestModel_SetEffectsOrder(t *testing.T) {
 func TestModel_GetEffectsOrder(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 
 	order := model.GetEffectsOrder()
 	if len(order) != 6 {
@@ -234,6 +243,7 @@ func TestModel_GetEffectsOrder(t *testing.T) {
 func TestUpdate_Init(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 
 	cmd := model.Init()
 	if cmd != nil {
@@ -244,6 +254,7 @@ func TestUpdate_Init(t *testing.T) {
 func TestUpdate_handleEnterKey_parameterMode(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	// Enter parameter mode
@@ -264,6 +275,7 @@ func TestUpdate_handleEnterKey_parameterMode(t *testing.T) {
 func TestView_Loading(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.width = 80 // Simulate window size received
 
 	view := model.View()
@@ -276,6 +288,7 @@ func TestView_Loading(t *testing.T) {
 func TestUpdate_toggleByControl(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	model.FilterEnabled = false
@@ -289,6 +302,7 @@ func TestUpdate_toggleByControl(t *testing.T) {
 func TestUpdate_toggleGrainIntensity(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	initial := model.GrainIntensity
@@ -326,6 +340,7 @@ func TestUpdate_adjustLogarithmic(t *testing.T) {
 func TestUpdate_setBlendMode(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	model.setBlendMode(1)
@@ -342,6 +357,7 @@ func TestUpdate_setBlendMode(t *testing.T) {
 func TestUpdate_toggleGrainIntensity_all(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	model.GrainIntensity = "subtle"
@@ -389,6 +405,7 @@ func TestHelper_SetBlendMode(t *testing.T) {
 func TestView_ModeEffectsList(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	view := model.View()
@@ -400,6 +417,7 @@ func TestView_ModeEffectsList(t *testing.T) {
 func TestView_ModeParameterList(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 	model.navigationMode = modeParameterList
 	model.currentSection = "filter"
@@ -414,6 +432,7 @@ func TestView_ModeParameterList(t *testing.T) {
 func TestUpdate_ParameterListNavigation(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	// Enter parameter mode
@@ -439,6 +458,7 @@ func TestUpdate_ParameterListNavigation(t *testing.T) {
 func TestUpdate_WindowSize(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57120)
 	model := NewModel(client)
+	model.SetScreenForTesting(int(screenMain))
 	model.InitLists(80, 40)
 
 	msg := tea.WindowSizeMsg{Width: 100, Height: 50}

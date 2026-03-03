@@ -3,8 +3,8 @@ package integration
 import (
 	"testing"
 
-	"github.com/renderorange/chroma/chroma-tui/osc"
-	"github.com/renderorange/chroma/chroma-tui/tui"
+	"github.com/renderorange/chroma/chroma-control/osc"
+	"github.com/renderorange/chroma/chroma-control/tui"
 )
 
 func TestParameterSync_FireAndForget(t *testing.T) {
@@ -103,7 +103,7 @@ func TestParameterSync_EffectsOrder(t *testing.T) {
 	client := osc.NewClient("127.0.0.1", 57129)
 	model := tui.NewModel(client)
 
-	// Get default effects order
+	// Get default effects order (master always comes first, not in the list)
 	defaultOrder := model.GetEffectsOrder()
 	if len(defaultOrder) != 6 {
 		t.Errorf("Expected 6 effects in default order, got %d", len(defaultOrder))

@@ -6,11 +6,13 @@ import (
 	"os"
 
 	tea "github.com/charmbracelet/bubbletea"
-	"github.com/renderorange/chroma/chroma-tui/config"
-	"github.com/renderorange/chroma/chroma-tui/midi"
-	"github.com/renderorange/chroma/chroma-tui/osc"
-	"github.com/renderorange/chroma/chroma-tui/tui"
+	"github.com/renderorange/chroma/chroma-control/config"
+	"github.com/renderorange/chroma/chroma-control/midi"
+	"github.com/renderorange/chroma/chroma-control/osc"
+	"github.com/renderorange/chroma/chroma-control/tui"
 )
+
+var version = "dev"
 
 func main() {
 	scHost := flag.String("host", "127.0.0.1", "SuperCollider host")
@@ -23,6 +25,7 @@ func main() {
 
 	// Create TUI model
 	model := tui.NewModel(client)
+	model.SetVersion(version)
 
 	// Start MIDI handler
 	var midiHandler *midi.Handler

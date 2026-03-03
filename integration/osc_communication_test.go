@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/renderorange/chroma/chroma-tui/osc"
-	"github.com/renderorange/chroma/chroma-tui/tui"
+	"github.com/renderorange/chroma/chroma-control/osc"
+	"github.com/renderorange/chroma/chroma-control/tui"
 )
 
 // TestHelper provides utilities for OSC testing

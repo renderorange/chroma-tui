@@ -90,19 +90,19 @@ jobs:
           CGO_ENABLED: ${{ matrix.cgo_enabled }}
           CC: ${{ matrix.goos == 'windows' && 'gcc' || '' }}
         run: |
-          go build -ldflags="-s -w" -o chroma-tui-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
+          go build -ldflags="-s -w" -o chroma-control-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
 
       - name: Smoke test binary
         if: matrix.can_test
         run: |
-          ./chroma-tui-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} --help
+          ./chroma-control-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }} --help
         shell: bash
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: chroma-tui-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: chroma-tui-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
+          name: chroma-control-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: chroma-control-${{ matrix.goos }}-${{ matrix.goarch }}${{ matrix.suffix }}
 
   release:
     name: Create Release
@@ -122,7 +122,7 @@ jobs:
       - name: Prepare release assets
         run: |
           mkdir -p release
-          find artifacts -type f -name 'chroma-tui-*' -exec mv {} release/ \;
+          find artifacts -type f -name 'chroma-control-*' -exec mv {} release/ \;
           ls -la release/
 
       - name: Create tag
