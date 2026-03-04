@@ -57,7 +57,7 @@ func (m Model) renderMain() string {
 	mainContent := m.renderMainBase()
 
 	if m.showCommandPalette {
-		return appStyle.Render(m.renderCommandPalette())
+		return m.renderCommandPalette()
 	}
 
 	return appStyle.Render(mainContent)

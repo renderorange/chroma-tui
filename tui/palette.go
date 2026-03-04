@@ -97,9 +97,8 @@ func (m *Model) renderCommandPalette() string {
 		return ""
 	}
 
-	background := m.renderMainBase()
 	modalContent := m.renderCommandPaletteModal()
-	return m.overlayModal(background, modalContent)
+	return m.centerModal(modalContent)
 }
 
 // renderCommandPaletteModal creates the command palette modal content.

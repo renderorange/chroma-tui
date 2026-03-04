@@ -284,6 +284,13 @@ func NewModel(client *osc.Client) Model {
 	m.screen = screenSplash
 	m.prevScreen = screenSplash
 
+	// If no last settings available, default to "new" selection
+	if _, err := config.LoadAutosave(); err != nil {
+		if config.LoadLastPresetName() == "" {
+			m.splashSelection = splashNew
+		}
+	}
+
 	return m
 }
 
