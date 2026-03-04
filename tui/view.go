@@ -171,7 +171,7 @@ func (m Model) renderFooter(width int) string {
 		}
 
 		if isEffectsOrderSelected {
-			parts = append([]string{"j/k:nav", "pgup/pgdn:reorder", "esc:back"}, parts...)
+			parts = append([]string{"j/k:nav", "h/l:reorder", "enter:grab", "esc:back"}, parts...)
 		} else {
 			parts = append([]string{"j/k:nav", "h/l:adjust", "enter:toggle", "esc:back"}, parts...)
 		}

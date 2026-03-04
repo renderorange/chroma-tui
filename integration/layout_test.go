@@ -57,8 +57,8 @@ func Test_Layout(t *testing.T) {
 	}
 
 	view = m.View()
-	if !strings.Contains(view, "pgup/pgdn:reorder") {
-		t.Errorf("expected footer to show 'pgup/pgdn:reorder' when Effects Order is selected")
+	if !strings.Contains(view, "h/l:reorder") {
+		t.Errorf("expected footer to show 'h/l:reorder' when Effects Order is selected")
 	}
 
 	// Test 4: Smoke test for rendering
