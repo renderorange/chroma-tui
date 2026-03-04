@@ -6,8 +6,7 @@
 |-----|--------|
 | `:` | Open command palette |
 | `?` | Toggle help panel |
-| `q` | Quit application |
-| `ctrl+c` | Force quit |
+| `ctrl+c` | Quit application |
 
 ## Effects List Mode
 
@@ -33,6 +32,6 @@ When the parameter list is focused (right panel):
 
 | Command | Action |
 |---------|--------|
-| `quit` / `q` | Exit application |
+| `quit` / `exit` | Exit application |
 | `help` / `h` / `?` | Open help panel |
 | `settings` / `set` | Open settings screen |

@@ -85,13 +85,20 @@ func Save(cfg Config, path string) error {
 	return toml.NewEncoder(file).Encode(cfg)
 }
 
-// Settings holds TUI-specific configuration.
+// Settings holds UI-only preferences (not effect parameters)
 type Settings struct {
+	ShowStatus     bool `toml:"show_status"`
+	ShowPagination bool `toml:"show_pagination"`
+	ShowTitle      bool `toml:"show_title"`
 }
 
 // DefaultSettings returns default TUI settings.
 func DefaultSettings() Settings {
-	return Settings{}
+	return Settings{
+		ShowStatus:     true,
+		ShowPagination: true,
+		ShowTitle:      true,
+	}
 }
 
 // LoadSettings loads TUI settings from the config directory.

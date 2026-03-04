@@ -17,10 +17,17 @@ func (m Model) View() string {
 		return appStyle.Render("Terminal too small. Minimum: 60x20")
 	}
 
+	// Handle quit confirmation
+	if m.showQuitConfirm {
+		return m.renderQuitConfirmation()
+	}
+
 	// Route to appropriate screen view
 	switch m.screen {
 	case screenSplash:
 		return m.renderSplash()
+	case screenPresetBrowser:
+		return m.renderPresetBrowser()
 	case screenSettings:
 		return m.renderSettings()
 	case screenHelp:
@@ -148,10 +155,6 @@ func (m Model) renderFooter(width int) string {
 	// Build context-aware shortcuts
 	var parts []string
 
-	// Always shown shortcuts
-	parts = append(parts, ":commands")
-	parts = append(parts, "?:help")
-
 	// Mode-specific shortcuts
 	switch m.navigationMode {
 	case modeEffectsList:
@@ -174,6 +177,10 @@ func (m Model) renderFooter(width int) string {
 		}
 	}
 
+	// Always shown shortcuts at the end
+	parts = append(parts, ":commands")
+	parts = append(parts, "?:help")
+
 	text := strings.Join(parts, " | ")
 
 	return footerStyle.Render(text)
@@ -193,15 +200,34 @@ func (m Model) renderStatusBar(width int) string {
 		midiStatus = "No MIDI"
 	}
 
-	// Build status bar - just connection and MIDI
+	// Preset name and dirty indicator
+	presetDisplay := m.currentPresetName
+	if presetDisplay == "" {
+		presetDisplay = "(unsaved)"
+	}
+	if m.isDirty {
+		presetDisplay += " *"
+	}
+	presetSection := lipgloss.NewStyle().Foreground(colorTextMuted).Render(presetDisplay)
+
+	// Build status bar - connection, preset, and MIDI
 	leftSection := connectionStatus
+	middleSection := presetSection
 	rightSection := midiStatus
 
-	// Calculate spacing
+	// Calculate widths
 	leftWidth := lipgloss.Width(leftSection)
+	middleWidth := lipgloss.Width(middleSection)
 	rightWidth := lipgloss.Width(rightSection)
 
-	availableSpace := width - leftWidth - rightWidth - 4 // padding
+	// Calculate spacing to center the middle section
+	totalContentWidth := leftWidth + middleWidth + rightWidth
+	availableSpace := width - totalContentWidth - 4 // padding
+
+	if availableSpace < 2 {
+		availableSpace = 2
+	}
+
 	leftPadding := availableSpace / 2
 	rightPadding := availableSpace - leftPadding
 
@@ -219,8 +245,104 @@ func (m Model) renderStatusBar(width int) string {
 
 	statusText := leftSection +
 		lipgloss.NewStyle().Width(leftPadding).Render("") +
+		middleSection +
 		lipgloss.NewStyle().Width(rightPadding).Render("") +
 		rightSection
 
 	return statusBarStyle.Render(statusText)
+}
+
+func (m *Model) renderQuitConfirmation() string {
+	modalWidth := 50
+	if m.width > 0 && m.width < modalWidth+4 {
+		modalWidth = m.width - 4
+	}
+	if modalWidth < 40 {
+		modalWidth = 40
+	}
+
+	titleStyle := lipgloss.NewStyle().
+		Foreground(colorTextError).
+		Bold(true).
+		Width(modalWidth - 4)
+	textStyle := lipgloss.NewStyle().
+		Foreground(colorTextNormal).
+		Width(modalWidth - 4)
+	mutedStyle := lipgloss.NewStyle().
+		Foreground(colorTextMuted)
+	modalStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(colorTextError).
+		Padding(1, 2)
+
+	var content strings.Builder
+	content.WriteString(titleStyle.Render("Unsaved Changes"))
+	content.WriteString("\n\n")
+	content.WriteString(textStyle.Render("Save changes before quitting?"))
+	content.WriteString("\n\n")
+	content.WriteString(mutedStyle.Render(strings.Repeat("─", modalWidth-4)))
+	content.WriteString("\n")
+	content.WriteString(mutedStyle.Render("s:save  d:discard  c:cancel"))
+
+	return m.centerModal(modalStyle.Width(modalWidth).Render(content.String()))
+}
+
+// overlay overlays foreground content on top of background content
+func overlay(background, foreground string) string {
+	bgLines := strings.Split(background, "\n")
+	fgLines := strings.Split(foreground, "\n")
+
+	// Find where to place the foreground (center it)
+	bgHeight := len(bgLines)
+	fgHeight := len(fgLines)
+	startY := (bgHeight - fgHeight) / 2
+	if startY < 0 {
+		startY = 0
+	}
+
+	var result strings.Builder
+	for i := 0; i < startY && i < len(bgLines); i++ {
+		result.WriteString(bgLines[i])
+		result.WriteString("\n")
+	}
+
+	// Overlay foreground lines
+	for i, fgLine := range fgLines {
+		if startY+i < len(bgLines) {
+			bgLine := bgLines[startY+i]
+			fgWidth := lipgloss.Width(fgLine)
+			bgWidth := len(bgLine)
+
+			// Center the foreground line over the background
+			startX := (bgWidth - fgWidth) / 2
+			if startX < 0 {
+				startX = 0
+			}
+
+			// Write background up to start position
+			if startX < len(bgLine) {
+				result.WriteString(bgLine[:startX])
+			}
+
+			// Write foreground
+			result.WriteString(fgLine)
+
+			// Write rest of background
+			endX := startX + fgWidth
+			if endX < len(bgLine) {
+				result.WriteString(bgLine[endX:])
+			}
+		} else {
+			result.WriteString(fgLine)
+		}
+		result.WriteString("\n")
+	}
+
+	// Write remaining background lines
+	for i := startY + fgHeight; i < len(bgLines); i++ {
+		result.WriteString(bgLines[i])
+		result.WriteString("\n")
+	}
+
+	return strings.TrimRight(result.String(), "\n")
 }

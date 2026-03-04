@@ -93,15 +93,29 @@ func newParameterItemWithDesc(id, title string, customDesc string, ctrl control,
 }
 
 func (m *Model) buildEffectsList() []list.Item {
+	// Master always comes first
 	items := []list.Item{
 		newEffectItem("master", "Master", m.MasterEnabled, true),
-		newEffectItem("filter", "Filter", m.FilterEnabled, true),
-		newEffectItem("overdrive", "Overdrive", m.OverdriveEnabled, true),
-		newEffectItem("bitcrush", "Bitcrush", m.BitcrushEnabled, true),
-		newEffectItem("granular", "Granular", m.GranularEnabled, true),
-		newEffectItem("reverb", "Reverb", m.ReverbEnabled, true),
-		newEffectItem("delay", "Delay", m.DelayEnabled, true),
 	}
+
+	// Build rest of list from EffectsOrder
+	for _, effectID := range m.EffectsOrder {
+		switch effectID {
+		case "filter":
+			items = append(items, newEffectItem("filter", "Filter", m.FilterEnabled, true))
+		case "overdrive":
+			items = append(items, newEffectItem("overdrive", "Overdrive", m.OverdriveEnabled, true))
+		case "bitcrush":
+			items = append(items, newEffectItem("bitcrush", "Bitcrush", m.BitcrushEnabled, true))
+		case "granular":
+			items = append(items, newEffectItem("granular", "Granular", m.GranularEnabled, true))
+		case "reverb":
+			items = append(items, newEffectItem("reverb", "Reverb", m.ReverbEnabled, true))
+		case "delay":
+			items = append(items, newEffectItem("delay", "Delay", m.DelayEnabled, true))
+		}
+	}
+
 	return items
 }
 

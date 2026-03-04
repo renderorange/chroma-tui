@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/renderorange/chroma/chroma-control/config"
 )
 
 // Command represents an executable command.
@@ -19,7 +20,7 @@ func availableCommands() []Command {
 	return []Command{
 		{
 			Name:        "quit",
-			Aliases:     []string{},
+			Aliases:     []string{"exit"},
 			Description: "Exit the application",
 			Handler:     cmdQuit,
 		},
@@ -34,6 +35,30 @@ func availableCommands() []Command {
 			Aliases:     []string{"set"},
 			Description: "Open settings screen",
 			Handler:     cmdSettings,
+		},
+		{
+			Name:        "save",
+			Aliases:     []string{},
+			Description: "Save current preset (optionally with name: :save my-preset)",
+			Handler:     cmdSave,
+		},
+		{
+			Name:        "load",
+			Aliases:     []string{},
+			Description: "Load a preset by name (:load my-preset) or open browser",
+			Handler:     cmdLoad,
+		},
+		{
+			Name:        "presets",
+			Aliases:     []string{"browser"},
+			Description: "Open preset browser",
+			Handler:     cmdPresets,
+		},
+		{
+			Name:        "reset",
+			Aliases:     []string{"defaults"},
+			Description: "Reset all settings to factory defaults",
+			Handler:     cmdReset,
 		},
 	}
 }
@@ -56,7 +81,15 @@ func findCommand(name string) (Command, bool) {
 
 // cmdQuit handles the quit command.
 func cmdQuit(m *Model, args []string) tea.Cmd {
-	return tea.Quit
+	return func() tea.Msg {
+		if m.isDirty {
+			m.showQuitConfirm = true
+			// Return a message to trigger re-render
+			type redrawMsg struct{}
+			return redrawMsg{}
+		}
+		return tea.Quit()
+	}
 }
 
 // cmdHelp handles the help command.
@@ -68,5 +101,67 @@ func cmdHelp(m *Model, args []string) tea.Cmd {
 // cmdSettings handles the settings command.
 func cmdSettings(m *Model, args []string) tea.Cmd {
 	m.switchScreen(screenSettings)
+	return nil
+}
+
+// cmdSave handles the save command.
+func cmdSave(m *Model, args []string) tea.Cmd {
+	return func() tea.Msg {
+		if len(args) > 0 {
+			name := strings.Join(args, " ")
+			preset := m.buildCurrentPreset()
+			if err := config.SavePreset(preset, name); err == nil {
+				m.currentPresetName = name
+				config.SaveLastPresetName(name)
+				m.loadedPresetHash = preset.Hash()
+				m.isDirty = false
+			}
+		} else if m.currentPresetName != "" && m.currentPresetName != "_last" {
+			preset := m.buildCurrentPreset()
+			config.SavePreset(preset, m.currentPresetName)
+			m.loadedPresetHash = preset.Hash()
+			m.isDirty = false
+		} else {
+			// Open save-as dialog
+			m.presetBrowser.mode = browserModeSaveAs
+			m.presetBrowser.inputBuffer = ""
+			m.refreshPresetList()
+			m.switchScreen(screenPresetBrowser)
+		}
+		return nil
+	}
+}
+
+// cmdLoad handles the load command.
+func cmdLoad(m *Model, args []string) tea.Cmd {
+	if len(args) > 0 {
+		return func() tea.Msg {
+			name := strings.Join(args, " ")
+			if preset, err := config.LoadPreset(name); err == nil {
+				m.applyPreset(preset)
+				m.currentPresetName = name
+				config.SaveLastPresetName(name)
+			}
+			return nil
+		}
+	}
+	// Open preset browser immediately
+	m.refreshPresetList()
+	m.switchScreen(screenPresetBrowser)
+	return nil
+}
+
+// cmdPresets handles the presets command.
+func cmdPresets(m *Model, args []string) tea.Cmd {
+	m.refreshPresetList()
+	m.switchScreen(screenPresetBrowser)
+	return nil
+}
+
+// cmdReset handles the reset command.
+func cmdReset(m *Model, args []string) tea.Cmd {
+	m.applyPreset(config.DefaultPreset())
+	m.currentPresetName = ""
+	m.isDirty = true
 	return nil
 }

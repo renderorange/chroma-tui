@@ -3,6 +3,8 @@ package tui
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"math"
+
+	"github.com/renderorange/chroma/chroma-control/config"
 )
 
 func (m Model) Init() tea.Cmd {
@@ -10,10 +12,21 @@ func (m Model) Init() tea.Cmd {
 }
 
 func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	// Handle screen-specific updates first
+	// Handle quit confirmation first (overlays any screen)
+	if m.showQuitConfirm {
+		switch msg := msg.(type) {
+		case tea.KeyMsg:
+			return m.handleQuitConfirmKeys(msg)
+		}
+		return m, nil
+	}
+
+	// Handle screen-specific updates
 	switch m.screen {
 	case screenSplash:
 		return m.updateSplash(msg)
+	case screenPresetBrowser:
+		return m.updatePresetBrowser(msg)
 	case screenSettings:
 		return m.updateSettings(msg)
 	case screenHelp:
@@ -68,6 +81,10 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	// App-level keys - handle first and return early
 	switch msg.String() {
 	case "ctrl+c":
+		if m.isDirty {
+			m.showQuitConfirm = true
+			return m, nil
+		}
 		return m, tea.Quit
 
 	case "enter":
@@ -127,6 +144,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 						if err := m.client.SetEffectsOrder(order); err != nil {
 						}
 						m.refreshParameterList()
+						m.checkDirty()
 					}
 				} else {
 					// Move selection left
@@ -148,6 +166,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 						if err := m.client.SetEffectsOrder(order); err != nil {
 						}
 						m.refreshParameterList()
+						m.checkDirty()
 					}
 				} else {
 					// Move selection right
@@ -160,6 +179,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 
+		// Regular parameter adjustments
 		switch msg.String() {
 		case "left", "h":
 			if m.isGrainIntensitySelected() {
@@ -170,6 +190,7 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.adjustSelectedParameter(-0.05)
 			}
 			m.refreshParameterList()
+			m.checkDirty()
 			return m, nil
 
 		case "right", "l":
@@ -181,19 +202,99 @@ func (m *Model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.adjustSelectedParameter(0.05)
 			}
 			m.refreshParameterList()
+			m.checkDirty()
+			return m, nil
+
+		case "up", "k":
+			if m.parameterList.Index() > 0 {
+				// Check if moving away from Effects Order while in edit mode
+				if m.effectsOrderEditMode {
+					idx := m.parameterList.Index()
+					items := m.parameterList.Items()
+					if idx >= 0 && idx < len(items) {
+						if param, ok := items[idx].(parameterItem); ok {
+							if param.ctrl == ctrlEffectsOrder {
+								m.effectsOrderEditMode = false
+								m.effectGrabbed = false
+							}
+						}
+					}
+				}
+				m.parameterList.CursorUp()
+				m.updateFocusedFromSelection()
+			}
+			return m, nil
+
+		case "down", "j":
+			if m.parameterList.Index() < len(m.parameterList.Items())-1 {
+				// Check if moving away from Effects Order while in edit mode
+				if m.effectsOrderEditMode {
+					idx := m.parameterList.Index()
+					items := m.parameterList.Items()
+					if idx >= 0 && idx < len(items) {
+						if param, ok := items[idx].(parameterItem); ok {
+							if param.ctrl == ctrlEffectsOrder {
+								m.effectsOrderEditMode = false
+								m.effectGrabbed = false
+							}
+						}
+					}
+				}
+				m.parameterList.CursorDown()
+				m.updateFocusedFromSelection()
+			}
+			return m, nil
+		}
+
+		return m, nil
+	}
+
+	// Effects list navigation
+	if m.navigationMode == modeEffectsList {
+		switch msg.String() {
+		case "up", "k":
+			if m.effectsList.Index() > 0 {
+				m.effectsList.CursorUp()
+				m.syncParameterPanel()
+			}
+			return m, nil
+
+		case "down", "j":
+			if m.effectsList.Index() < len(m.effectsList.Items())-1 {
+				m.effectsList.CursorDown()
+				m.syncParameterPanel()
+			}
 			return m, nil
 		}
 	}
 
-	// Delegate all other keys to the active list
-	var cmd tea.Cmd
-	if m.navigationMode == modeEffectsList {
-		m.effectsList, cmd = m.effectsList.Update(msg)
-		m.syncParameterPanel()
-	} else if m.navigationMode == modeParameterList {
-		m.parameterList, cmd = m.parameterList.Update(msg)
+	return m, nil
+}
+
+// handleQuitConfirmKeys handles keys when the quit confirmation dialog is shown.
+func (m *Model) handleQuitConfirmKeys(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
+	switch msg.String() {
+	case "s":
+		// Save and quit
+		if m.currentPresetName != "" && m.currentPresetName != "_last" {
+			preset := m.buildCurrentPreset()
+			config.SavePreset(preset, m.currentPresetName)
+		}
+		// Also save autosave
+		config.SaveAutosave(m.buildCurrentPreset())
+		return m, tea.Quit
+
+	case "d":
+		// Discard and quit (but still save autosave for next session)
+		config.SaveAutosave(m.buildCurrentPreset())
+		return m, tea.Quit
+
+	case "c", "esc":
+		// Cancel
+		m.showQuitConfirm = false
+		return m, nil
 	}
-	return m, cmd
+	return m, nil
 }
 
 func (m *Model) handleEnterKey() (tea.Model, tea.Cmd) {
@@ -222,11 +323,14 @@ func (m *Model) handleEnterKey() (tea.Model, tea.Cmd) {
 					m.effectGrabbed = false
 				} else if param.ctrl == ctrlGrainIntensity {
 					m.toggleGrainIntensity()
+					m.checkDirty()
 				} else if param.ctrl == ctrlBlendMode {
 					m.cycleBlendModeWithDirection(1)
+					m.checkDirty()
 				} else if param.isToggle {
 					m.toggleByControl(param.ctrl)
 					m.refreshEffectsList()
+					m.checkDirty()
 				}
 				m.refreshParameterList()
 			}
@@ -518,30 +622,6 @@ func clamp(v, min, max float32) float32 {
 	return v
 }
 
-// updateSplash handles key events on the splash screen.
-func (m *Model) updateSplash(msg tea.Msg) (tea.Model, tea.Cmd) {
-	switch msg := msg.(type) {
-	case tea.KeyMsg:
-		switch msg.String() {
-		case "ctrl+c", "esc":
-			return m, tea.Quit
-		default:
-			// Any other key transitions to main screen
-			// Initialize lists if we have window size but haven't initialized yet
-			if m.width > 0 && len(m.effectsList.Items()) == 0 {
-				m.InitLists(m.width, m.height)
-			}
-			m.switchScreen(screenMain)
-			return m, nil
-		}
-	case tea.WindowSizeMsg:
-		m.width = msg.Width
-		m.height = msg.Height
-		return m, nil
-	}
-	return m, nil
-}
-
 // updateHelp handles updates on the help screen.
 func (m *Model) updateHelp(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
@@ -568,7 +648,7 @@ func (m *Model) handleCommandPaletteKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, m.executeCommand(m.commandPaletteText)
 
 	case tea.KeyBackspace:
-		if len(m.commandPaletteText) > 1 {
+		if len(m.commandPaletteText) > 0 {
 			m.commandPaletteText = m.commandPaletteText[:len(m.commandPaletteText)-1]
 		}
 		return m, nil
@@ -576,6 +656,11 @@ func (m *Model) handleCommandPaletteKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case tea.KeyRunes:
 		// Append typed characters
 		m.commandPaletteText += string(msg.Runes)
+		return m, nil
+
+	case tea.KeySpace:
+		// Append space
+		m.commandPaletteText += " "
 		return m, nil
 	}
 

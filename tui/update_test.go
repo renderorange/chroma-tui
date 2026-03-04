@@ -197,19 +197,3 @@ func TestUpdate_FullSideBySideWorkflow(t *testing.T) {
 		t.Errorf("expected effects list index 1 (filter), got %d", m.effectsList.Index())
 	}
 }
-
-func TestUpdate_Quit(t *testing.T) {
-	client := osc.NewClient("127.0.0.1", 57120)
-	model := NewModel(client)
-	model.SetScreenForTesting(int(screenMain))
-	model.InitLists(80, 40)
-
-	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("q")}
-	updatedModel, cmd := model.Update(msg)
-
-	updatedModelTyped := updatedModel.(*Model)
-	if cmd == nil {
-		t.Error("expected Quit command, got nil")
-	}
-	_ = updatedModelTyped
-}

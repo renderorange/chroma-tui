@@ -5,21 +5,10 @@ import (
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
+	"github.com/renderorange/chroma/chroma-control/config"
 )
 
-type settingsItem struct {
-	name        string
-	description string
-	isSelected  bool
-}
-
 func (m *Model) renderSettings() string {
-	background := m.renderMain()
-	modalContent := m.renderSettingsModal()
-	return m.overlayModal(background, modalContent)
-}
-
-func (m *Model) renderSettingsModal() string {
 	modalWidth := 50
 	if m.width > 0 && m.width < modalWidth+4 {
 		modalWidth = m.width - 4
@@ -28,28 +17,69 @@ func (m *Model) renderSettingsModal() string {
 		modalWidth = 40
 	}
 
-	itemStyle := lipgloss.NewStyle().
-		Foreground(colorTextMuted).
+	titleStyle := lipgloss.NewStyle().
+		Foreground(colorPrimary).
+		Bold(true).
 		Width(modalWidth - 4)
-
+	itemStyle := lipgloss.NewStyle().
+		Foreground(colorTextNormal).
+		Width(modalWidth - 4)
+	selectedStyle := lipgloss.NewStyle().
+		Foreground(colorPrimary).
+		Bold(true).
+		Width(modalWidth - 4)
 	mutedStyle := lipgloss.NewStyle().
 		Foreground(colorTextMuted)
-
+	infoStyle := lipgloss.NewStyle().
+		Foreground(colorSecondary)
 	modalStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(colorPrimary).
-		Padding(0, 1)
+		Padding(1, 2)
 
 	var content strings.Builder
 
-	content.WriteString(itemStyle.Render("Settings coming soon..."))
-
+	content.WriteString(titleStyle.Render("Settings"))
 	content.WriteString("\n\n")
-	content.WriteString(mutedStyle.Render(strings.Repeat("─", modalWidth-2)))
-	content.WriteString("\n")
-	content.WriteString(mutedStyle.Render("esc: back"))
 
-	return modalStyle.Width(modalWidth).Render(content.String())
+	// Show current preset name
+	currentName := m.currentPresetName
+	if currentName == "" {
+		currentName = "(unsaved)"
+	}
+	content.WriteString(infoStyle.Render("Current: " + currentName))
+	if m.isDirty {
+		content.WriteString(infoStyle.Render(" *"))
+	}
+	content.WriteString("\n\n")
+
+	items := []struct {
+		id   settingsMenuItem
+		name string
+	}{
+		{settingsSave, "Save"},
+		{settingsSaveAs, "Save As"},
+		{settingsLoad, "Load"},
+		{settingsReset, "Reset to Defaults"},
+	}
+
+	for _, item := range items {
+		style := itemStyle
+		prefix := "  "
+		if item.id == m.settingsSelection {
+			style = selectedStyle
+			prefix = "> "
+		}
+		content.WriteString(style.Render(prefix + item.name))
+		content.WriteString("\n")
+	}
+
+	content.WriteString("\n")
+	content.WriteString(mutedStyle.Render(strings.Repeat("─", modalWidth-4)))
+	content.WriteString("\n")
+	content.WriteString(mutedStyle.Render("j/k:nav  enter:select  esc:back"))
+
+	return m.centerModal(modalStyle.Width(modalWidth).Render(content.String()))
 }
 
 func (m *Model) updateSettings(msg tea.Msg) (tea.Model, tea.Cmd) {
@@ -57,13 +87,63 @@ func (m *Model) updateSettings(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "esc", "q":
-			m.goBack()
+			m.switchScreen(screenMain)
 			return m, nil
+
+		case "j", "down":
+			if m.settingsSelection < settingsReset {
+				m.settingsSelection++
+			}
+			return m, nil
+
+		case "k", "up":
+			if m.settingsSelection > settingsSave {
+				m.settingsSelection--
+			}
+			return m, nil
+
+		case "enter":
+			return m.handleSettingsSelection()
 
 		case "?":
 			m.switchScreen(screenHelp)
 			return m, nil
 		}
+	}
+	return m, nil
+}
+
+func (m *Model) handleSettingsSelection() (tea.Model, tea.Cmd) {
+	switch m.settingsSelection {
+	case settingsSave:
+		if m.currentPresetName != "" && m.currentPresetName != "_last" {
+			preset := m.buildCurrentPreset()
+			config.SavePreset(preset, m.currentPresetName)
+			m.loadedPresetHash = preset.Hash()
+			m.isDirty = false
+			m.switchScreen(screenMain)
+		} else {
+			// Show save-as dialog
+			m.presetBrowser.mode = browserModeSaveAs
+			m.presetBrowser.inputBuffer = ""
+			m.refreshPresetList()
+			m.switchScreen(screenPresetBrowser)
+		}
+
+	case settingsSaveAs:
+		m.presetBrowser.mode = browserModeSaveAs
+		m.presetBrowser.inputBuffer = ""
+		m.refreshPresetList()
+		m.switchScreen(screenPresetBrowser)
+
+	case settingsLoad:
+		m.refreshPresetList()
+		m.switchScreen(screenPresetBrowser)
+
+	case settingsReset:
+		m.applyPreset(config.DefaultPreset())
+		m.currentPresetName = ""
+		m.isDirty = true
 	}
 	return m, nil
 }

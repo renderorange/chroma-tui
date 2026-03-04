@@ -29,8 +29,20 @@ func TestSplash_Render(t *testing.T) {
 		t.Error("expected splash to contain version")
 	}
 
-	if !strings.Contains(view, "Press any key") {
-		t.Error("expected splash to contain 'Press any key' prompt")
+	if !strings.Contains(view, "last") {
+		t.Error("expected splash to contain 'last' option")
+	}
+
+	if !strings.Contains(view, "new") {
+		t.Error("expected splash to contain 'new' option")
+	}
+
+	if !strings.Contains(view, "load") {
+		t.Error("expected splash to contain 'load' option")
+	}
+
+	if !strings.Contains(view, "quit") {
+		t.Error("expected splash to contain 'quit' option")
 	}
 }
 

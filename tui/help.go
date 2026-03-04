@@ -63,9 +63,7 @@ func helpContent() []helpSection {
 }
 
 func (m *Model) renderHelp() string {
-	background := m.renderMain()
-	modalContent := m.renderHelpModal()
-	return m.overlayModal(background, modalContent)
+	return m.renderHelpModal()
 }
 
 func (m *Model) renderHelpModal() string {
@@ -76,6 +74,11 @@ func (m *Model) renderHelpModal() string {
 	if modalWidth < 40 {
 		modalWidth = 40
 	}
+
+	titleStyle := lipgloss.NewStyle().
+		Foreground(colorPrimary).
+		Bold(true).
+		Width(modalWidth - 4)
 
 	sectionStyle := lipgloss.NewStyle().
 		Foreground(colorPrimary).
@@ -90,12 +93,18 @@ func (m *Model) renderHelpModal() string {
 		Foreground(colorTextMuted).
 		Width(modalWidth - 20)
 
+	mutedStyle := lipgloss.NewStyle().
+		Foreground(colorTextMuted)
+
 	modalStyle := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(colorPrimary).
-		Padding(0, 1)
+		Padding(1, 2)
 
 	var content strings.Builder
+
+	content.WriteString(titleStyle.Render("Help"))
+	content.WriteString("\n\n")
 
 	for i, section := range helpContent() {
 		if i > 0 {
@@ -113,7 +122,12 @@ func (m *Model) renderHelpModal() string {
 		}
 	}
 
-	return modalStyle.Width(modalWidth).Render(content.String())
+	content.WriteString("\n")
+	content.WriteString(mutedStyle.Render(strings.Repeat("─", modalWidth-4)))
+	content.WriteString("\n")
+	content.WriteString(mutedStyle.Render("esc:back"))
+
+	return m.centerModal(modalStyle.Width(modalWidth).Render(content.String()))
 }
 
 func (m *Model) overlayModal(background, modal string) string {
